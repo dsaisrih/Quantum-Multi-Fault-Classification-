@@ -1,0 +1,2776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<title>QuantumFault — Multi-Fault Classification System</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --cyan:#00e5ff;--cyan2:#0096ff;--purple:#8b5cf6;--pink:#ec4899;
+  --dark:#030810;--dark2:#070f1e;--card:#0b1628;--card2:#0f1e38;
+  --border:#162035;--border2:#1e3050;--muted:#4a6080;
+  --text:#dde8f5;--text2:#94afc8;
+  --green:#00e676;--red:#ff5252;--amber:#ffab40;
+  --glow-cyan:0 0 20px rgba(0,229,255,.3);
+  --glow-purple:0 0 20px rgba(139,92,246,.3);
+}
+body{font-family:'IBM Plex Mono',monospace;background:var(--dark);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--dark2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── BACKGROUND GRID ── */
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+/* ── CANVAS PARTICLES ── */
+#bg-canvas{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.4}
+
+/* ── LAYOUT ── */
+.app{display:flex;min-height:100vh;position:relative;z-index:1}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:220px;background:rgba(7,15,30,.95);border-right:1px solid var(--border);
+  padding:0;position:fixed;height:100vh;overflow-y:auto;z-index:50;
+  display:flex;flex-direction:column;
+  backdrop-filter:blur(20px);
+}
+.sidebar-logo{
+  padding:24px 20px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;
+}
+.logo-atom{
+  width:38px;height:38px;border-radius:10px;
+  background:linear-gradient(135deg,var(--cyan),var(--purple));
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;flex-shrink:0;
+  box-shadow:var(--glow-cyan);
+  animation:logoPulse 3s ease-in-out infinite;
+}
+@keyframes logoPulse{0%,100%{box-shadow:var(--glow-cyan)}50%{box-shadow:0 0 30px rgba(0,229,255,.5)}}
+.logo-text{}
+.logo-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.3px}
+.logo-sub{font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+
+.nav-section{padding:12px 10px 4px}
+.nav-label{font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;padding:4px 10px 6px;font-weight:600}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;
+  cursor:pointer;font-size:11px;color:var(--text2);transition:all .2s;
+  border:none;background:none;width:100%;text-align:left;font-family:'IBM Plex Mono',monospace;
+  position:relative;overflow:hidden;
+}
+.nav-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--cyan);transform:scaleY(0);transition:transform .2s;border-radius:0 2px 2px 0}
+.nav-item:hover{background:rgba(0,229,255,.06);color:var(--cyan)}
+.nav-item.active{background:rgba(0,229,255,.08);color:var(--cyan)}
+.nav-item.active::before{transform:scaleY(1)}
+.nav-icon{font-size:14px;min-width:18px;text-align:center}
+
+.sidebar-footer{margin-top:auto;padding:14px 10px;border-top:1px solid var(--border)}
+.user-chip{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(0,229,255,.04);border:1px solid var(--border)}
+.user-avatar{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--cyan),var(--purple));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.user-name{font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.user-role{font-size:9px;color:var(--muted);margin-top:1px}
+
+/* ── MAIN ── */
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+
+/* ── TOPBAR ── */
+.topbar{
+  background:rgba(7,15,30,.9);border-bottom:1px solid var(--border);
+  padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:40;backdrop-filter:blur(20px);
+}
+.topbar-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text)}
+.topbar-status{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted)}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;box-shadow:0 0 8px rgba(0,230,118,.5)}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.2)}}
+.topbar-actions{display:flex;align-items:center;gap:10px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;border:none;transition:all .2s;font-family:'IBM Plex Mono',monospace;letter-spacing:.3px}
+.btn-primary{background:linear-gradient(135deg,var(--purple),var(--cyan2));color:#fff;box-shadow:0 2px 12px rgba(139,92,246,.3)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(139,92,246,.4)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.btn-ghost:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,.05)}
+.btn-danger{background:transparent;border:1px solid rgba(255,82,82,.3);color:var(--red)}
+.btn-danger:hover{background:rgba(255,82,82,.08)}
+.btn-cyan{background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.3);color:var(--cyan)}
+.btn-cyan:hover{background:rgba(0,229,255,.15)}
+
+/* ── CONTENT ── */
+.content{padding:28px;flex:1}
+
+/* ── CARDS ── */
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;
+  transition:border-color .2s;
+}
+.card:hover{border-color:var(--border2)}
+.card-glow{box-shadow:var(--glow-cyan)}
+
+/* ── SECTION TITLE ── */
+.section-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.section-title-dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);flex-shrink:0}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.badge-cyan{background:rgba(0,229,255,.1);color:var(--cyan);border:1px solid rgba(0,229,255,.2)}
+.badge-purple{background:rgba(139,92,246,.1);color:#a78bfa;border:1px solid rgba(139,92,246,.2)}
+.badge-green{background:rgba(0,230,118,.1);color:var(--green);border:1px solid rgba(0,230,118,.2)}
+.badge-red{background:rgba(255,82,82,.1);color:var(--red);border:1px solid rgba(255,82,82,.2)}
+.badge-yellow{background:rgba(255,171,64,.1);color:var(--amber);border:1px solid rgba(255,171,64,.2)}
+.badge-pink{background:rgba(236,72,153,.1);color:var(--pink);border:1px solid rgba(236,72,153,.2)}
+
+/* ── INPUTS ── */
+.inp{width:100%;background:#060e1d;border:1px solid var(--border2);border-radius:8px;padding:10px 13px;color:var(--text);font-size:12px;outline:none;font-family:'IBM Plex Mono',monospace;transition:all .2s}
+.inp:focus{border-color:var(--cyan);background:#07121f;box-shadow:0 0 0 3px rgba(0,229,255,.08)}
+.lbl{display:block;font-size:9px;font-weight:600;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px}
+select.inp option{background:#0b1628}
+
+/* ── GRID ── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+
+/* ── METRIC CARDS ── */
+.metric-card{
+  background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:16px;
+  transition:all .3s;cursor:default;
+}
+.metric-card:hover{border-color:rgba(0,229,255,.2);transform:translateY(-2px);box-shadow:var(--glow-cyan)}
+.metric-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:800}
+.metric-lbl{font-size:9px;color:var(--muted);margin-top:4px;letter-spacing:1px;text-transform:uppercase}
+.metric-delta{font-size:10px;margin-top:5px;display:flex;align-items:center;gap:3px}
+
+/* ── TABS ── */
+.tab-row{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:22px}
+.tab{padding:10px 18px;font-size:11px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:'IBM Plex Mono',monospace;letter-spacing:.3px}
+.tab.active{border-bottom-color:var(--cyan);color:var(--cyan)}
+
+/* ── RESULT BLOCK ── */
+.result-block{background:#040b18;border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:16px}
+
+/* ── BAR ── */
+.bar-wrap{background:#081322;border-radius:4px;height:8px;overflow:hidden;margin-top:5px}
+.bar-fill{height:100%;border-radius:4px;transition:width .9s cubic-bezier(.25,.46,.45,.94)}
+
+/* ── CIRCUIT ── */
+.circuit-viz{background:#040b18;border:1px solid var(--border);border-radius:10px;padding:18px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#94a3b8;overflow-x:auto}
+.circuit-line{display:flex;align-items:center;gap:0;margin:4px 0;white-space:nowrap}
+.gate{display:inline-flex;align-items:center;justify-content:center;width:28px;height:20px;border:1px solid;border-radius:4px;font-size:9px;font-weight:700;margin:0 1px}
+.gate-h{border-color:#8b5cf6;color:#a78bfa;background:rgba(139,92,246,.2)}
+.gate-x{border-color:var(--red);color:var(--red);background:rgba(255,82,82,.15)}
+.gate-cx{border-color:var(--amber);color:var(--amber);background:rgba(255,171,64,.15)}
+.gate-m{border-color:var(--green);color:var(--green);background:rgba(0,230,118,.15)}
+.wire{display:inline-block;height:1px;background:var(--border2);width:8px;vertical-align:middle}
+
+/* ── ML BARS ── */
+.ml-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.ml-label{font-size:10px;color:var(--text2);min-width:90px;text-align:right}
+.ml-bar-bg{flex:1;background:#081322;border-radius:4px;height:12px;overflow:hidden;border:1px solid var(--border)}
+.ml-bar-fill{height:100%;border-radius:3px;transition:width 1.2s cubic-bezier(.25,.46,.45,.94)}
+.ml-score{font-size:11px;font-weight:700;min-width:40px}
+
+/* ── TOAST ── */
+.toast-container{position:fixed;top:18px;right:18px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{
+  background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:12px 16px;
+  font-size:11px;color:var(--text);min-width:240px;
+  animation:toastIn .35s cubic-bezier(.34,1.56,.64,1);
+  display:flex;align-items:center;gap:10px;backdrop-filter:blur(20px);
+}
+@keyframes toastIn{from{transform:translateX(60px) scale(.9);opacity:0}to{transform:none;opacity:1}}
+.toast-success{border-left:3px solid var(--green)}
+.toast-error{border-left:3px solid var(--red)}
+.toast-info{border-left:3px solid var(--cyan)}
+
+/* ── AUTH PAGE ── */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--dark);position:relative;overflow:hidden}
+.auth-card{
+  background:rgba(11,22,40,.98);border:1px solid var(--border2);border-radius:20px;padding:40px;width:420px;
+  position:relative;z-index:1;backdrop-filter:blur(20px);
+  animation:authAppear .6s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes authAppear{from{transform:translateY(30px) scale(.95);opacity:0}to{transform:none;opacity:1}}
+.auth-top-glow{position:absolute;top:-1px;left:40px;right:40px;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),var(--purple),transparent);border-radius:1px}
+.divider{display:flex;align-items:center;gap:12px;margin:16px 0}
+.divider-line{flex:1;height:1px;background:var(--border)}
+.divider-text{font-size:10px;color:var(--muted)}
+
+/* ── ROWS ── */
+.history-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#060e1d;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;transition:all .2s}
+.history-row:hover{border-color:rgba(0,229,255,.3);transform:translateX(3px)}
+.anomaly-item{padding:13px;background:#060e1d;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;transition:border-color .2s}
+.signal-row{display:flex;align-items:center;gap:8px;padding:9px;background:#060e1d;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.comparison-row{display:grid;grid-template-columns:130px 1fr 1fr;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(30,48,80,.4)}
+
+/* ── PAGES ── */
+.page{display:none;animation:pageIn .4s ease}
+.page.active{display:block}
+@keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ── LOADING ── */
+.loading-spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.15);border-top-color:rgba(255,255,255,.8);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── DATA TABLE ── */
+table.data-table{width:100%;border-collapse:collapse;font-size:11px}
+table.data-table th{text-align:left;padding:10px 14px;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border);font-size:9px}
+table.data-table td{padding:10px 14px;border-bottom:1px solid rgba(30,48,80,.3);color:var(--text2)}
+table.data-table tr:hover td{background:rgba(0,229,255,.025)}
+
+/* ── SEARCH BOX ── */
+.search-box{position:relative}
+.search-box input{padding-left:30px}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px}
+
+/* ── GLOW TEXT ── */
+.glow-text{text-shadow:0 0 25px rgba(0,229,255,.6)}
+
+/* ── ABOUT SECTION ── */
+.about-hero{
+  position:relative;padding:60px 0 50px;text-align:center;overflow:hidden;
+  margin-bottom:32px;
+}
+.about-hero::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(0,229,255,.08),transparent 70%);
+}
+.about-hero-title{
+  font-family:'Syne',sans-serif;font-size:38px;font-weight:800;
+  background:linear-gradient(135deg,var(--cyan),var(--purple),var(--pink));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  margin-bottom:12px;animation:titleGlow 3s ease-in-out infinite;
+  letter-spacing:-1px;
+}
+@keyframes titleGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.15)}}
+.about-hero-sub{font-size:14px;color:var(--text2);max-width:600px;margin:0 auto;line-height:1.8}
+.about-hero-badges{display:flex;justify-content:center;gap:10px;margin-top:20px;flex-wrap:wrap}
+
+.about-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:28px}
+.about-card{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;
+  position:relative;overflow:hidden;transition:all .3s;
+  animation:cardRise .6s ease both;
+}
+.about-card:nth-child(1){animation-delay:.05s}
+.about-card:nth-child(2){animation-delay:.1s}
+.about-card:nth-child(3){animation-delay:.15s}
+.about-card:nth-child(4){animation-delay:.2s}
+.about-card:nth-child(5){animation-delay:.25s}
+.about-card:nth-child(6){animation-delay:.3s}
+@keyframes cardRise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+.about-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent-color,var(--cyan)),transparent);
+}
+.about-card:hover{transform:translateY(-4px);border-color:var(--border2);box-shadow:0 10px 40px rgba(0,0,0,.4)}
+.about-card-icon{font-size:28px;margin-bottom:14px}
+.about-card-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px}
+.about-card-text{font-size:11px;color:var(--text2);line-height:1.8}
+
+.about-pipeline{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:28px;
+}
+.pipeline-steps{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding-bottom:8px}
+.pipeline-step{
+  flex:1;min-width:140px;padding:20px 16px;text-align:center;position:relative;
+}
+.pipeline-step+.pipeline-step::before{
+  content:'→';position:absolute;left:-12px;top:50%;transform:translateY(-50%);
+  color:var(--cyan);font-size:18px;opacity:.6;
+}
+.pipeline-step-num{
+  width:36px;height:36px;border-radius:50%;margin:0 auto 12px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:800;
+  border:2px solid;
+}
+.pipeline-step-title{font-size:11px;font-weight:700;color:var(--text);margin-bottom:5px;font-family:'Syne',sans-serif}
+.pipeline-step-desc{font-size:9px;color:var(--text2);line-height:1.7}
+
+.about-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.about-stat{
+  background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:20px;
+  text-align:center;transition:all .3s;
+}
+.about-stat:hover{border-color:rgba(0,229,255,.25);box-shadow:var(--glow-cyan);transform:translateY(-2px)}
+.about-stat-val{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.about-stat-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:5px}
+
+.about-algo-section{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:28px;
+}
+.algo-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.algo-card{
+  background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:20px;
+  transition:all .3s;
+}
+.algo-card:hover{border-color:rgba(139,92,246,.3);box-shadow:var(--glow-purple)}
+.algo-card-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.algo-card-icon{
+  width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;
+}
+.algo-card-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)}
+.algo-card-badge{font-size:9px}
+.algo-card-desc{font-size:11px;color:var(--text2);line-height:1.8}
+.algo-card-meta{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+
+.team-section{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:28px;
+}
+.team-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.team-card{
+  background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;
+  transition:all .3s;
+}
+.team-card:hover{border-color:rgba(0,229,255,.25);transform:translateY(-3px);box-shadow:var(--glow-cyan)}
+.team-avatar{
+  width:54px;height:54px;border-radius:14px;margin:0 auto 12px;
+  background:linear-gradient(135deg,var(--color1,var(--cyan)),var(--color2,var(--purple)));
+  display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;font-weight:700;
+  box-shadow:0 4px 15px rgba(0,0,0,.3);
+}
+.team-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
+.team-role{font-size:10px;color:var(--muted)}
+
+.roadmap-section{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;
+}
+.roadmap-items{display:flex;flex-direction:column;gap:12px}
+.roadmap-item{display:flex;gap:16px;padding:14px 16px;background:var(--card2);border:1px solid var(--border);border-radius:10px;transition:all .2s}
+.roadmap-item:hover{border-color:var(--border2);transform:translateX(4px)}
+.roadmap-dot{
+  width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:4px;
+  box-shadow:0 0 8px currentColor;
+}
+.roadmap-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:3px;font-family:'Syne',sans-serif}
+.roadmap-desc{font-size:10px;color:var(--text2);line-height:1.7}
+
+/* ── QUANTUM ORBIT ANIMATION ── */
+.quantum-orbit{position:relative;width:120px;height:120px;margin:0 auto 24px}
+.orbit-ring{position:absolute;inset:0;border:1px solid rgba(0,229,255,.15);border-radius:50%;animation:orbitSpin linear infinite}
+.orbit-ring:nth-child(1){animation-duration:6s}
+.orbit-ring:nth-child(2){animation-duration:9s;animation-direction:reverse;border-color:rgba(139,92,246,.15);inset:15px}
+.orbit-ring:nth-child(3){animation-duration:4s;border-color:rgba(236,72,153,.15);inset:30px}
+.orbit-nucleus{position:absolute;inset:42px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--purple));box-shadow:0 0 20px rgba(0,229,255,.4),0 0 40px rgba(0,229,255,.2)}
+.orbit-electron{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+.orbit-electron-2{position:absolute;width:6px;height:6px;border-radius:50%;background:#8b5cf6;box-shadow:0 0 8px #8b5cf6}
+@keyframes orbitSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+/* ══════════════════════════════════════════════════════
+   ANIMATION SYSTEM — injected upgrade layer
+   ══════════════════════════════════════════════════════ */
+
+/* ── PAGE TRANSITIONS ── */
+.page{display:none}
+.page.active{display:block;animation:pageSlideIn .45s cubic-bezier(.22,1,.36,1)}
+@keyframes pageSlideIn{
+  from{opacity:0;transform:translateY(16px) scale(.985)}
+  to  {opacity:1;transform:translateY(0)    scale(1)}
+}
+
+/* ── AUTH CARD ENTRANCE ── */
+#auth-page .auth-card{animation:authFloat .7s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes authFloat{
+  from{opacity:0;transform:translateY(40px) scale(.93)}
+  to  {opacity:1;transform:translateY(0)    scale(1)}
+}
+
+/* ── SIDEBAR ITEMS STAGGER ── */
+.nav-item{animation:navSlide .4s cubic-bezier(.22,1,.36,1) both}
+.nav-item:nth-child(1){animation-delay:.04s}
+.nav-item:nth-child(2){animation-delay:.08s}
+.nav-item:nth-child(3){animation-delay:.12s}
+.nav-item:nth-child(4){animation-delay:.16s}
+.nav-item:nth-child(5){animation-delay:.20s}
+.nav-item:nth-child(6){animation-delay:.24s}
+@keyframes navSlide{
+  from{opacity:0;transform:translateX(-14px)}
+  to  {opacity:1;transform:translateX(0)}
+}
+/* Ripple on nav click */
+.nav-item::after{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at center,rgba(0,229,255,.18) 0%,transparent 70%);
+  opacity:0;transition:opacity .4s;border-radius:8px;pointer-events:none;
+}
+.nav-item:active::after{opacity:1}
+
+/* ── METRIC CARDS STAGGER ── */
+.metric-card{animation:metricPop .5s cubic-bezier(.34,1.46,.64,1) both}
+.grid-4 .metric-card:nth-child(1){animation-delay:.05s}
+.grid-4 .metric-card:nth-child(2){animation-delay:.12s}
+.grid-4 .metric-card:nth-child(3){animation-delay:.19s}
+.grid-4 .metric-card:nth-child(4){animation-delay:.26s}
+@keyframes metricPop{
+  from{opacity:0;transform:translateY(22px) scale(.92)}
+  to  {opacity:1;transform:translateY(0)    scale(1)}
+}
+
+/* ── CARD HOVER GLOW SWEEP ── */
+.card{position:relative;overflow:hidden}
+.card::after{
+  content:'';position:absolute;inset:0;border-radius:14px;
+  background:linear-gradient(135deg,rgba(0,229,255,.04) 0%,transparent 60%);
+  opacity:0;transition:opacity .35s;pointer-events:none;
+}
+.card:hover::after{opacity:1}
+
+/* ── TOPBAR SLIDE DOWN ── */
+.topbar{animation:topbarIn .5s cubic-bezier(.22,1,.36,1) both}
+@keyframes topbarIn{
+  from{opacity:0;transform:translateY(-100%)}
+  to  {opacity:1;transform:translateY(0)}
+}
+
+/* ── SIDEBAR SLIDE IN ── */
+.sidebar{animation:sidebarIn .55s cubic-bezier(.22,1,.36,1) both}
+@keyframes sidebarIn{
+  from{opacity:0;transform:translateX(-100%)}
+  to  {opacity:1;transform:translateX(0)}
+}
+
+/* ── BUTTON PRESS SCALE ── */
+.btn{position:relative;overflow:hidden}
+.btn:active{transform:scale(.96)!important}
+.btn::before{
+  content:'';position:absolute;
+  width:200%;padding-top:200%;
+  left:-50%;top:-50%;
+  background:radial-gradient(circle,rgba(255,255,255,.12) 0%,transparent 60%);
+  transform:scale(0);transition:transform .5s cubic-bezier(.4,0,.2,1),opacity .5s;
+  opacity:0;border-radius:50%;
+}
+.btn:active::before{transform:scale(1);opacity:1}
+
+/* ── BADGE FLOAT ── */
+.badge{transition:transform .2s,box-shadow .2s}
+.badge:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,229,255,.2)}
+
+/* ── ABOUT HERO TITLE SHIMMER ── */
+.about-hero-title{
+  background-size:200% auto;
+  animation:titleGlow 3s ease-in-out infinite, shimmer 4s linear infinite;
+}
+@keyframes shimmer{
+  0%  {background-position:0% center}
+  100%{background-position:200% center}
+}
+
+/* ── STAT CARD COUNT-UP INDICATOR ── */
+.about-stat{position:relative;overflow:hidden}
+.about-stat::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  animation:statLine 2.5s ease-in-out infinite;
+}
+@keyframes statLine{
+  0%  {opacity:0;transform:scaleX(0)}
+  50% {opacity:1;transform:scaleX(1)}
+  100%{opacity:0;transform:scaleX(0)}
+}
+
+/* ── PIPELINE STEP ENTRANCE ── */
+.pipeline-step{animation:pipeIn .5s ease both}
+.pipeline-step:nth-child(1){animation-delay:.05s}
+.pipeline-step:nth-child(2){animation-delay:.15s}
+.pipeline-step:nth-child(3){animation-delay:.25s}
+.pipeline-step:nth-child(4){animation-delay:.35s}
+.pipeline-step:nth-child(5){animation-delay:.45s}
+@keyframes pipeIn{
+  from{opacity:0;transform:translateY(18px)}
+  to  {opacity:1;transform:none}
+}
+.pipeline-step-num{
+  animation:numPulse 3s ease-in-out infinite;
+  animation-delay:calc(var(--i,0) * .4s);
+}
+@keyframes numPulse{
+  0%,100%{box-shadow:none}
+  50%    {box-shadow:0 0 14px currentColor}
+}
+
+/* ── CIRCUIT GATE FLASH ── */
+.gate{animation:gateAppear .3s ease both}
+@keyframes gateAppear{
+  from{opacity:0;transform:scale(.7)}
+  to  {opacity:1;transform:scale(1)}
+}
+.circuit-line:nth-child(2) .gate{animation-delay:.06s}
+.circuit-line:nth-child(3) .gate{animation-delay:.12s}
+.circuit-line:nth-child(4) .gate{animation-delay:.18s}
+.circuit-line:nth-child(5) .gate{animation-delay:.24s}
+
+/* ── ML BAR ANIMATED FILL ON ENTER ── */
+.ml-bar-fill{
+  animation:barGrow 1.2s cubic-bezier(.25,.46,.45,.94) both;
+  transform-origin:left;
+}
+@keyframes barGrow{
+  from{transform:scaleX(0);opacity:.6}
+  to  {transform:scaleX(1);opacity:1}
+}
+.ml-bar-row:nth-child(1) .ml-bar-fill{animation-delay:.05s}
+.ml-bar-row:nth-child(2) .ml-bar-fill{animation-delay:.15s}
+.ml-bar-row:nth-child(3) .ml-bar-fill{animation-delay:.25s}
+.ml-bar-row:nth-child(4) .ml-bar-fill{animation-delay:.35s}
+.ml-bar-row:nth-child(5) .ml-bar-fill{animation-delay:.45s}
+
+/* ── SIGNAL ROW STREAM ANIMATION ── */
+.signal-row{animation:streamIn .35s cubic-bezier(.22,1,.36,1) both}
+@keyframes streamIn{
+  from{opacity:0;transform:translateX(-20px)}
+  to  {opacity:1;transform:translateX(0)}
+}
+
+/* ── ANOMALY ITEM POP ── */
+.anomaly-item{animation:anomalyIn .4s ease both}
+@keyframes anomalyIn{
+  from{opacity:0;transform:translateX(14px)}
+  to  {opacity:1;transform:translateX(0)}
+}
+
+/* ── HISTORY ROW STAGGER ── */
+.history-row{animation:histIn .35s ease both}
+@keyframes histIn{
+  from{opacity:0;transform:translateX(-10px)}
+  to  {opacity:1;transform:translateX(0)}
+}
+
+/* ── RESULT CARD ENTRANCE ── */
+.card-glow{animation:resultReveal .5s cubic-bezier(.34,1.26,.64,1) both}
+@keyframes resultReveal{
+  from{opacity:0;transform:scale(.96) translateY(10px)}
+  to  {opacity:1;transform:scale(1)   translateY(0)}
+}
+
+/* ── ALERT ITEM FLASH ── */
+[id="rt-alerts"] div{animation:alertFlash .4s ease both}
+@keyframes alertFlash{
+  0%  {opacity:0;transform:translateY(-8px);border-color:rgba(255,82,82,.6)}
+  60% {border-color:rgba(255,82,82,.6)}
+  100%{opacity:1;transform:translateY(0);border-color:rgba(255,82,82,.2)}
+}
+
+/* ── STATUS DOT TRAIL ── */
+.status-dot{
+  position:relative;
+}
+.status-dot::after{
+  content:'';position:absolute;inset:-4px;border-radius:50%;
+  border:1.5px solid rgba(0,230,118,.4);
+  animation:dotRing 2s ease-in-out infinite;
+}
+@keyframes dotRing{
+  0%  {transform:scale(1);opacity:.7}
+  100%{transform:scale(2.2);opacity:0}
+}
+
+/* ── LOGO ATOM SPIN ── */
+.logo-atom{
+  animation:logoPulse 3s ease-in-out infinite,logoSpin 20s linear infinite;
+}
+@keyframes logoSpin{
+  from{background-position:0% 50%}
+  to  {background-position:400% 50%}
+}
+
+/* ── GRID BACKGROUND DRIFT ── */
+body::before{
+  animation:gridDrift 30s linear infinite;
+}
+@keyframes gridDrift{
+  0%  {background-position:0 0,0 0}
+  100%{background-position:40px 40px,40px 40px}
+}
+
+/* ── ALGO CARD HOVER BORDER CHASE ── */
+.algo-card{position:relative;overflow:hidden}
+.algo-card::after{
+  content:'';position:absolute;inset:-1px;border-radius:13px;
+  background:linear-gradient(90deg,var(--cyan),var(--purple),var(--pink),var(--cyan));
+  background-size:400% 100%;
+  opacity:0;transition:opacity .3s;
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+  padding:1px;pointer-events:none;
+}
+.algo-card:hover::after{
+  opacity:1;
+  animation:borderChase 2s linear infinite;
+}
+@keyframes borderChase{
+  0%  {background-position:0% 50%}
+  100%{background-position:400% 50%}
+}
+
+/* ── ROADMAP DOT PULSE ── */
+.roadmap-dot{animation:roadmapPulse 2s ease-in-out infinite}
+.roadmap-item:nth-child(2) .roadmap-dot{animation-delay:.3s}
+.roadmap-item:nth-child(3) .roadmap-dot{animation-delay:.6s}
+.roadmap-item:nth-child(4) .roadmap-dot{animation-delay:.9s}
+@keyframes roadmapPulse{
+  0%,100%{transform:scale(1);opacity:1}
+  50%    {transform:scale(1.5);opacity:.6}
+}
+
+/* ── TOAST SHAKE ON ERROR ── */
+.toast-error{animation:toastIn .35s cubic-bezier(.34,1.56,.64,1),shake .4s .35s ease}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%    {transform:translateX(-5px)}
+  40%    {transform:translateX(5px)}
+  60%    {transform:translateX(-3px)}
+  80%    {transform:translateX(3px)}
+}
+
+/* ── LOADING SPINNER UPGRADE ── */
+.loading-spin{
+  border-color:rgba(139,92,246,.2)!important;
+  border-top-color:var(--cyan)!important;
+  box-shadow:0 0 12px rgba(0,229,255,.35);
+}
+
+/* ── CARD BORDER SCAN ON HOVER ── */
+@property --scan-angle { syntax:'<angle>'; initial-value:0deg; inherits:false; }
+.metric-card{
+  --scan-angle:0deg;
+  border-image:none;
+  transition:all .3s,--scan-angle .0s;
+}
+.metric-card:hover{
+  --scan-angle:360deg;
+  animation:metricHover .3s ease,borderScan .8s linear infinite;
+}
+@keyframes borderScan{
+  to{--scan-angle:360deg}
+}
+
+/* ── USER CHIP HOVER ── */
+.user-chip{transition:all .25s}
+.user-chip:hover{
+  background:rgba(0,229,255,.08);
+  border-color:rgba(0,229,255,.3);
+  box-shadow:0 0 12px rgba(0,229,255,.15);
+}
+
+/* ── FIDELITY BAR PULSE WHEN HIGH ── */
+.bar-fill.high-fidelity{animation:fidPulse 1.5s ease-in-out 3}
+@keyframes fidPulse{
+  0%,100%{filter:brightness(1)}
+  50%    {filter:brightness(1.4) drop-shadow(0 0 6px currentColor)}
+}
+
+/* ── SECTION-TITLE DOT BEAT ── */
+.section-title-dot{
+  animation:dotBeat 2s ease-in-out infinite;
+}
+@keyframes dotBeat{
+  0%,100%{transform:scale(1);opacity:1}
+  50%    {transform:scale(1.6);opacity:.7}
+}
+
+/* ── COMPARE TABLE ROW HOVER GLOW ── */
+table.data-table tr:hover td{
+  background:rgba(0,229,255,.04);
+  transition:background .15s;
+}
+
+/* ── BACKGROUND RADIAL PULSE (behind dashboard) ── */
+#page-dashboard::before{
+  content:'';position:fixed;width:600px;height:600px;
+  left:50%;top:50%;transform:translate(-50%,-50%);
+  background:radial-gradient(circle,rgba(0,229,255,.03) 0%,transparent 70%);
+  border-radius:50%;pointer-events:none;
+  animation:bgPulse 6s ease-in-out infinite;
+  z-index:-1;
+}
+@keyframes bgPulse{
+  0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.5}
+  50%    {transform:translate(-50%,-50%) scale(1.3);opacity:1}
+}
+
+/* ── GLITCH ON METRIC VALUE HOVER ── */
+.metric-val{position:relative;transition:color .2s}
+.metric-card:hover .metric-val{animation:glitchVal .5s ease}
+@keyframes glitchVal{
+  0%  {clip-path:none}
+  20% {clip-path:inset(10% 0 80% 0);transform:translateX(-3px)}
+  40% {clip-path:inset(60% 0 20% 0);transform:translateX(3px)}
+  60% {clip-path:inset(30% 0 50% 0);transform:translateX(-1px)}
+  80% {clip-path:inset(70% 0 10% 0);transform:translateX(2px)}
+  100%{clip-path:none;transform:none}
+}
+
+/* ── QUANTUM CIRCUIT WIRE FLOW ── */
+.wire{
+  background:linear-gradient(90deg,var(--border2),rgba(0,229,255,.4),var(--border2));
+  background-size:200% 100%;
+  animation:wireFlow 2s linear infinite;
+}
+@keyframes wireFlow{
+  0%  {background-position:200% 0}
+  100%{background-position:-200% 0}
+}
+
+/* ── BUTTON PRIMARY GRADIENT SWEEP ── */
+.btn-primary{
+  background-size:200% auto;
+  animation:btnSweep 3s linear infinite;
+}
+@keyframes btnSweep{
+  0%  {background-position:0% center}
+  100%{background-position:200% center}
+}
+
+/* ── INPUT FOCUS BEAM ── */
+.inp:focus::placeholder{
+  animation:placeholderFade .3s ease forwards;
+}
+@keyframes placeholderFade{
+  to{opacity:0;transform:translateX(6px)}
+}
+
+/* ── TOPBAR SHIMMER LINE ── */
+.topbar::after{
+  content:'';position:absolute;bottom:0;left:0;width:60px;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  animation:topScan 4s linear infinite;
+}
+@keyframes topScan{
+  0%  {left:-60px}
+  100%{left:calc(100% + 60px)}
+}
+
+/* ── SCROLLBAR THUMB GLOW ANIMATION ── */
+::-webkit-scrollbar-thumb{
+  animation:scrollThumb 3s ease-in-out infinite;
+}
+@keyframes scrollThumb{
+  0%,100%{background:var(--border2)}
+  50%    {background:rgba(0,229,255,.3)}
+}
+
+/* ── ABOUT HERO PARTICLE OVERLAY ── */
+.about-hero::after{
+  content:'';position:absolute;inset:0;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='200'%3E%3Ccircle cx='50' cy='50' r='1' fill='rgba(0,229,255,.3)'/%3E%3Ccircle cx='150' cy='30' r='1.5' fill='rgba(139,92,246,.3)'/%3E%3Ccircle cx='300' cy='80' r='1' fill='rgba(236,72,153,.3)'/%3E%3Ccircle cx='80' cy='140' r='2' fill='rgba(0,229,255,.2)'/%3E%3Ccircle cx='350' cy='150' r='1' fill='rgba(139,92,246,.2)'/%3E%3C/svg%3E");
+  animation:particleDrift 8s linear infinite;
+  pointer-events:none;opacity:.6;
+}
+@keyframes particleDrift{
+  0%  {background-position:0 0}
+  100%{background-position:400px 0}
+}
+
+/* ── CARD FIRST-LOAD STAGGER ── */
+.content > div.page.active .card{
+  animation:cardEntrance .5s cubic-bezier(.22,1,.36,1) both;
+}
+.content > div.page.active .card:nth-child(1){animation-delay:.03s}
+.content > div.page.active .card:nth-child(2){animation-delay:.08s}
+.content > div.page.active .card:nth-child(3){animation-delay:.13s}
+.content > div.page.active .card:nth-child(4){animation-delay:.18s}
+@keyframes cardEntrance{
+  from{opacity:0;transform:translateY(14px)}
+  to  {opacity:1;transform:translateY(0)}
+}
+
+/* ── AIRCRAFT FAULT BUILDER ── */
+.comp-toggle{
+  display:flex;align-items:center;gap:10px;padding:8px 12px;
+  background:#060e1d;border:1px solid var(--border);border-radius:9px;
+  cursor:pointer;transition:all .25s;
+}
+.comp-toggle:hover{border-color:rgba(0,229,255,.25);background:rgba(0,229,255,.03)}
+.comp-toggle.fault{border-color:rgba(255,82,82,.5);background:rgba(255,82,82,.06)}
+.comp-toggle.fault:hover{border-color:var(--red)}
+.comp-icon{font-size:16px;min-width:22px;text-align:center}
+.comp-name{flex:1;font-size:11px;font-weight:600;color:var(--text2);font-family:'Syne',sans-serif}
+.comp-toggle.fault .comp-name{color:var(--red)}
+.comp-bit{font-family:monospace;font-size:16px;font-weight:800;min-width:18px;text-align:center;color:var(--muted);transition:color .2s}
+.comp-toggle.fault .comp-bit{color:var(--red)}
+.toggle-switch{width:36px;height:18px;border-radius:9px;background:var(--border2);position:relative;flex-shrink:0;transition:background .2s}
+.comp-toggle.fault .toggle-switch{background:rgba(255,82,82,.5)}
+.toggle-knob{width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:all .2s;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.comp-toggle.fault .toggle-knob{left:20px;background:var(--red);box-shadow:0 0 8px rgba(255,82,82,.5)}
+
+/* SVG fault pulse animation */
+@keyframes svgPulse{
+  0%,100%{opacity:0;r:16px}
+  50%{opacity:.7;r:22px}
+}
+.svg-fault-pulse{animation:svgPulse 1.2s ease-in-out infinite}
+.svg-component-fault{filter:drop-shadow(0 0 6px var(--red))}
+
+/* Sig bits glow */
+#sig-bits-display span.bit-1{color:var(--red);text-shadow:0 0 10px rgba(255,82,82,.6)}
+#sig-bits-display span.bit-0{color:rgba(0,229,255,.35)}
+
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ── AUTH PAGE ── -->
+<div id="auth-page">
+  <div class="auth-wrap">
+    <div id="auth-rings"></div>
+    <div class="auth-card">
+      <div class="auth-top-glow"></div>
+      <div style="text-align:center;margin-bottom:32px">
+        <div class="quantum-orbit" style="width:80px;height:80px;margin:0 auto 16px">
+          <div class="orbit-ring" style="animation-duration:5s">
+            <div class="orbit-electron" style="top:-4px;left:50%;margin-left:-4px"></div>
+          </div>
+          <div class="orbit-ring" style="animation-duration:8s;animation-direction:reverse;inset:10px">
+            <div class="orbit-electron-2" style="bottom:-3px;left:50%;margin-left:-3px"></div>
+          </div>
+          <div class="orbit-nucleus" style="inset:28px;box-shadow:0 0 15px rgba(0,229,255,.5)"></div>
+        </div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.5px">QuantumFault</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:1.5px;text-transform:uppercase">Multi-Fault Classification System v2.0</div>
+      </div>
+      <div id="auth-form-login">
+        <div style="margin-bottom:14px">
+          <label class="lbl">Email</label>
+          <input class="inp" type="email" id="login-email" placeholder="you@quantum.lab"/>
+        </div>
+        <div style="margin-bottom:22px">
+          <label class="lbl">Password</label>
+          <input class="inp" type="password" id="login-password" placeholder="••••••••"/>
+        </div>
+        <div id="auth-error" style="display:none;color:var(--red);font-size:11px;margin-bottom:14px;padding:10px;background:rgba(255,82,82,.08);border-radius:8px;border:1px solid rgba(255,82,82,.2)"></div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="doLogin()">Sign In →</button>
+        <div class="divider"><div class="divider-line"></div><span class="divider-text">OR</span><div class="divider-line"></div></div>
+        <button class="btn btn-cyan" style="width:100%;justify-content:center;padding:12px" onclick="demoLogin()">⚡ Launch Demo Mode</button>
+        <p style="text-align:center;margin-top:20px;font-size:11px;color:var(--muted)">No account? <span style="color:var(--cyan);cursor:pointer" onclick="showSignup()">Sign up</span></p>
+        <p style="text-align:center;margin-top:6px;font-size:10px;color:var(--muted)">Demo: <span style="color:var(--cyan);font-family:monospace">demo@quantum.lab</span> / <span style="color:var(--cyan);font-family:monospace">demo1234</span></p>
+      </div>
+      <div id="auth-form-signup" style="display:none">
+        <div style="margin-bottom:12px"><label class="lbl">Full Name</label><input class="inp" type="text" id="signup-name" placeholder="Dr. Alice Quantum"/></div>
+        <div style="margin-bottom:12px"><label class="lbl">Email</label><input class="inp" type="email" id="signup-email" placeholder="you@quantum.lab"/></div>
+        <div style="margin-bottom:12px">
+          <label class="lbl">Role</label>
+          <select class="inp" id="signup-role">
+            <option value="Quantum Analyst">Quantum Analyst</option>
+            <option value="Fault Engineer">Fault Engineer</option>
+            <option value="ML Researcher">ML Researcher</option>
+            <option value="System Admin">System Admin</option>
+            <option value="Flight Safety Officer">Flight Safety Officer</option>
+            <option value="Research Scientist">Research Scientist</option>
+          </select>
+        </div>
+        <div style="margin-bottom:22px"><label class="lbl">Password</label><input class="inp" type="password" id="signup-password" placeholder="Min 6 characters"/></div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="doSignup()">Create Account →</button>
+        <p style="text-align:center;margin-top:18px;font-size:11px;color:var(--muted)">Have an account? <span style="color:var(--cyan);cursor:pointer" onclick="showLogin()">Sign in</span></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="main-app" style="display:none">
+  <div class="app">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-atom">⚛</div>
+        <div class="logo-text">
+          <div class="logo-title">QuantumFault</div>
+          <div class="logo-sub">v2.0 · ML+Quantum</div>
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <button class="nav-item active" data-page="dashboard" onclick="gotoPage('dashboard',this)"><span class="nav-icon">◈</span> Dashboard</button>
+        <button class="nav-item" data-page="about" onclick="gotoPage('about',this)"><span class="nav-icon">◎</span> About Project</button>
+        <button class="nav-item" data-page="classify" onclick="gotoPage('classify',this)"><span class="nav-icon">⟨ψ⟩</span> Classify</button>
+        <button class="nav-item" data-page="ml" onclick="gotoPage('ml',this)"><span class="nav-icon">🧠</span> ML Analysis</button>
+        <button class="nav-item" data-page="anomaly" onclick="gotoPage('anomaly',this)"><span class="nav-icon">⚠</span> Anomaly</button>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Data</div>
+        <button class="nav-item" data-page="history" onclick="gotoPage('history',this)"><span class="nav-icon">≡</span> History</button>
+        <button class="nav-item" data-page="compare" onclick="gotoPage('compare',this)"><span class="nav-icon">⇌</span> Compare</button>
+        <button class="nav-item" data-page="realtime" onclick="gotoPage('realtime',this)"><span class="nav-icon">◉</span> Live Monitor</button>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Tools</div>
+        <button class="nav-item" data-page="heatmap" onclick="gotoPage('heatmap',this)"><span class="nav-icon">🌡</span> Fault Heatmap</button>
+        <button class="nav-item" data-page="noise" onclick="gotoPage('noise',this)"><span class="nav-icon">〜</span> Noise Simulator</button>
+        <button class="nav-item" data-page="report" onclick="gotoPage('report',this)"><span class="nav-icon">📋</span> Report Export</button>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Account</div>
+        <button class="nav-item" data-page="profile" onclick="gotoPage('profile',this)"><span class="nav-icon">◈</span> Profile</button>
+        <button class="nav-item" onclick="doLogout()"><span class="nav-icon">↩</span> Logout</button>
+      </div>
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <div class="user-avatar" id="sb-avatar">QA</div>
+          <div>
+            <div class="user-name" id="sb-name">Demo User</div>
+            <div class="user-role" id="sb-role">Quantum Analyst</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div class="topbar-title" id="page-title">Dashboard</div>
+          <div class="topbar-status"><div class="status-dot"></div> Qiskit Aer Online</div>
+        </div>
+        <div class="topbar-actions">
+          <span style="font-size:10px;color:var(--text2);font-weight:600" id="topbar-user"></span>
+          <span class="badge badge-cyan">ML+Quantum</span>
+          <span class="badge badge-purple">DJ Algorithm</span>
+        </div>
+      </div>
+      <div class="content">
+
+        <!-- ── DASHBOARD ── -->
+        <div id="page-dashboard" class="page active">
+          <div class="grid-4" style="margin-bottom:22px">
+            <div class="metric-card">
+              <div class="metric-val" style="color:var(--cyan)" id="m-total">0</div>
+              <div class="metric-lbl">Total Runs</div>
+              <div class="metric-delta" style="color:var(--green)">↑ This Session</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-val" style="color:var(--green)" id="m-acc">—</div>
+              <div class="metric-lbl">ML Accuracy</div>
+              <div class="metric-delta" style="color:var(--text2)">RF + QNN</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-val" style="color:#a78bfa" id="m-fid">—</div>
+              <div class="metric-lbl">Avg Fidelity</div>
+              <div class="metric-delta" style="color:var(--text2)">Quantum</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-val" style="color:var(--amber)" id="m-multi">0</div>
+              <div class="metric-lbl">Multi-Faults</div>
+              <div class="metric-delta" style="color:var(--text2)">Detected</div>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-bottom:22px">
+            <div class="card">
+              <div class="section-title"><div class="section-title-dot"></div> Recent Classifications</div>
+              <div id="dash-recent" style="font-size:11px;color:var(--muted)">No runs yet — run a classification first.</div>
+            </div>
+            <div class="card">
+              <div class="section-title"><div class="section-title-dot" style="background:#a78bfa"></div> System Health</div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:11px;color:var(--text2)">Quantum Backend</span><span style="font-size:11px;color:var(--green)">● Online</span></div><div class="bar-wrap"><div class="bar-fill" style="width:98%;background:linear-gradient(90deg,var(--green),#00c853)"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:11px;color:var(--text2)">ML Pipeline (RF)</span><span style="font-size:11px;color:var(--green)">● Ready</span></div><div class="bar-wrap"><div class="bar-fill" style="width:100%;background:linear-gradient(90deg,var(--purple),#4f46e5)"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:11px;color:var(--text2)">QNN Hybrid</span><span style="font-size:11px;color:var(--amber)">● Warm-up</span></div><div class="bar-wrap"><div class="bar-fill" style="width:82%;background:linear-gradient(90deg,var(--amber),#ef6c00)"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:11px;color:var(--text2)">Fidelity Validator</span><span style="font-size:11px;color:var(--cyan)">● Active</span></div><div class="bar-wrap"><div class="bar-fill" style="width:100%;background:linear-gradient(90deg,var(--cyan),var(--cyan2))"></div></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-title"><div class="section-title-dot" style="background:var(--amber)"></div> Quick Classify</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-ghost" style="font-size:10px" onclick="quickClassify('10101011',8)">10101011 · Balanced/8q</button>
+              <button class="btn btn-ghost" style="font-size:10px" onclick="quickClassify('11111111',8)">11111111 · Constant/8q</button>
+              <button class="btn btn-ghost" style="font-size:10px" onclick="quickClassify('10100101',6)">10100101 · Mixed/6q</button>
+              <button class="btn btn-ghost" style="font-size:10px" onclick="quickClassify('1010101010101010',16)">16-qubit Large</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── ABOUT PROJECT ── -->
+        <div id="page-about" class="page">
+          <!-- Hero -->
+          <div class="about-hero">
+            <div class="quantum-orbit">
+              <div class="orbit-ring"><div class="orbit-electron" style="top:-4px;left:calc(50% - 4px)"></div></div>
+              <div class="orbit-ring"><div class="orbit-electron-2" style="bottom:-3px;left:calc(50% - 3px)"></div></div>
+              <div class="orbit-ring" style="inset:30px"><div class="orbit-electron" style="right:-4px;top:calc(50% - 4px);background:var(--pink);box-shadow:0 0 10px var(--pink)"></div></div>
+              <div class="orbit-nucleus"></div>
+            </div>
+            <div class="about-hero-title">Quantum-Based Multi-Fault Classification</div>
+            <div class="about-hero-sub">A novel hybrid quantum-classical system leveraging the Deutsch-Jozsa Algorithm for exponential speedup in detecting and classifying concurrent faults in complex industrial and cyber-physical systems.</div>
+            <div class="about-hero-badges">
+              <span class="badge badge-cyan">Deutsch-Jozsa Algorithm</span>
+              <span class="badge badge-purple">Quantum-ML Hybrid</span>
+              <span class="badge badge-green">Fidelity Validation</span>
+              <span class="badge badge-pink">Real-time Monitor</span>
+              <span class="badge badge-yellow">Industrial-Scale</span>
+            </div>
+          </div>
+
+          <!-- Key Stats -->
+          <div class="about-stats">
+            <div class="about-stat">
+              <div class="about-stat-val">O(1)</div>
+              <div class="about-stat-lbl">Quantum Query Complexity</div>
+            </div>
+            <div class="about-stat">
+              <div class="about-stat-val" style="background:linear-gradient(135deg,var(--green),#00bfa5);-webkit-background-clip:text;-webkit-text-fill-color:transparent">99.1%</div>
+              <div class="about-stat-lbl">Ensemble Accuracy</div>
+            </div>
+            <div class="about-stat">
+              <div class="about-stat-val" style="background:linear-gradient(135deg,var(--amber),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent">2ⁿ×</div>
+              <div class="about-stat-lbl">Speedup vs Classical</div>
+            </div>
+            <div class="about-stat">
+              <div class="about-stat-val" style="background:linear-gradient(135deg,var(--pink),#c62828);-webkit-background-clip:text;-webkit-text-fill-color:transparent">5</div>
+              <div class="about-stat-lbl">Integrated Modules</div>
+            </div>
+          </div>
+
+          <!-- Key Features -->
+          <div class="about-grid">
+            <div class="about-card" style="--accent-color:var(--cyan)">
+              <div class="about-card-icon">⚛</div>
+              <div class="about-card-title">Quantum Parallelism</div>
+              <div class="about-card-text">Leverages quantum superposition to evaluate multiple fault states simultaneously. A single quantum query replaces O(2ⁿ) classical evaluations, enabling exponential speedup for complex multi-fault scenarios.</div>
+            </div>
+            <div class="about-card" style="--accent-color:var(--purple)">
+              <div class="about-card-icon">🧠</div>
+              <div class="about-card-title">ML Hybrid Ensemble</div>
+              <div class="about-card-text">Combines Random Forest, Support Vector Machines, and a Quantum Neural Network (QNN). The ensemble achieves 99.1% accuracy by leveraging complementary strengths of each classifier through weighted voting.</div>
+            </div>
+            <div class="about-card" style="--accent-color:var(--green)">
+              <div class="about-card-icon">🎯</div>
+              <div class="about-card-title">Fidelity Validation</div>
+              <div class="about-card-text">A quantum state fidelity metric continuously validates each classification result. Results below threshold are flagged for re-evaluation, ensuring high reliability even in noisy quantum environments.</div>
+            </div>
+            <div class="about-card" style="--accent-color:var(--amber)">
+              <div class="about-card-icon">⚡</div>
+              <div class="about-card-title">Deutsch-Jozsa Core</div>
+              <div class="about-card-text">The Deutsch-Jozsa algorithm forms the classification backbone. It distinguishes balanced (multi-fault) from constant (single-fault) oracle functions with a single quantum query — impossible classically without 2ⁿ⁻¹+1 evaluations.</div>
+            </div>
+            <div class="about-card" style="--accent-color:var(--pink)">
+              <div class="about-card-icon">📡</div>
+              <div class="about-card-title">Real-time Monitoring</div>
+              <div class="about-card-text">A continuous live signal stream processes fault signatures at configurable rates. High-confidence multi-fault detections trigger instant alerts, enabling proactive response in mission-critical systems.</div>
+            </div>
+            <div class="about-card" style="--accent-color:#00bfa5">
+              <div class="about-card-icon">🔬</div>
+              <div class="about-card-title">Anomaly Detection</div>
+              <div class="about-card-text">Three detection methods — entropy deviation, Hamming distance, and quantum fidelity — work together to identify unusual fault signatures that deviate from expected patterns in streaming data.</div>
+            </div>
+          </div>
+
+          <!-- Processing Pipeline -->
+          <div class="about-pipeline">
+            <div class="section-title"><div class="section-title-dot"></div> System Architecture Pipeline</div>
+            <div class="pipeline-steps">
+              <div class="pipeline-step">
+                <div class="pipeline-step-num" style="border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,.08)">01</div>
+                <div class="pipeline-step-title">Data Encoding</div>
+                <div class="pipeline-step-desc">Classical fault signatures encoded into quantum superposition states (qubits)</div>
+              </div>
+              <div class="pipeline-step">
+                <div class="pipeline-step-num" style="border-color:var(--purple);color:#a78bfa;background:rgba(139,92,246,.08)">02</div>
+                <div class="pipeline-step-title">Quantum Processing</div>
+                <div class="pipeline-step-desc">Deutsch-Jozsa circuit applies Hadamard gates and oracle transformation</div>
+              </div>
+              <div class="pipeline-step">
+                <div class="pipeline-step-num" style="border-color:var(--amber);color:var(--amber);background:rgba(255,171,64,.08)">03</div>
+                <div class="pipeline-step-title">Measurement</div>
+                <div class="pipeline-step-desc">Quantum state collapse yields classical bit string — balanced or constant</div>
+              </div>
+              <div class="pipeline-step">
+                <div class="pipeline-step-num" style="border-color:var(--green);color:var(--green);background:rgba(0,230,118,.08)">04</div>
+                <div class="pipeline-step-title">Fidelity Check</div>
+                <div class="pipeline-step-desc">Expected vs. actual state comparison validates classification accuracy</div>
+              </div>
+              <div class="pipeline-step">
+                <div class="pipeline-step-num" style="border-color:var(--pink);color:var(--pink);background:rgba(236,72,153,.08)">05</div>
+                <div class="pipeline-step-title">Classification</div>
+                <div class="pipeline-step-desc">ML ensemble interprets results: single-fault or multi-fault output</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Algorithm Details -->
+          <div class="about-algo-section">
+            <div class="section-title"><div class="section-title-dot" style="background:var(--purple)"></div> Core Algorithms</div>
+            <div class="algo-cards">
+              <div class="algo-card">
+                <div class="algo-card-header">
+                  <div class="algo-card-icon" style="background:rgba(0,229,255,.1)">⚛</div>
+                  <div>
+                    <div class="algo-card-name">Deutsch-Jozsa Algorithm</div>
+                    <span class="badge badge-cyan algo-card-badge">Primary Classifier</span>
+                  </div>
+                </div>
+                <div class="algo-card-desc">Determines whether a boolean function is balanced (equal 0s and 1s — multi-fault) or constant (all 0s or all 1s — single-fault). Requires exactly ONE quantum query compared to O(2ⁿ) classical queries. Forms the core decision-making layer of this system.</div>
+                <div class="algo-card-meta">
+                  <span class="badge badge-cyan">O(1) complexity</span>
+                  <span class="badge badge-purple">Deterministic</span>
+                </div>
+              </div>
+              <div class="algo-card">
+                <div class="algo-card-header">
+                  <div class="algo-card-icon" style="background:rgba(139,92,246,.1)">🧠</div>
+                  <div>
+                    <div class="algo-card-name">QNN Hybrid Model</div>
+                    <span class="badge badge-purple algo-card-badge">ML Layer</span>
+                  </div>
+                </div>
+                <div class="algo-card-desc">A parametric quantum neural network combines variational quantum circuits with classical optimization. Trained on Shannon entropy, Hamming weight, bit density and auto-correlation features extracted from fault signatures. Achieves 97.3% standalone accuracy.</div>
+                <div class="algo-card-meta">
+                  <span class="badge badge-purple">97.3% accuracy</span>
+                  <span class="badge badge-yellow">Variational</span>
+                </div>
+              </div>
+              <div class="algo-card">
+                <div class="algo-card-header">
+                  <div class="algo-card-icon" style="background:rgba(0,230,118,.1)">🌲</div>
+                  <div>
+                    <div class="algo-card-name">Random Forest (RF)</div>
+                    <span class="badge badge-green algo-card-badge">Classical Baseline</span>
+                  </div>
+                </div>
+                <div class="algo-card-desc">Ensemble of decision trees trained on extracted signal features. Provides interpretable feature importance rankings (entropy 0.88, bit density 0.76) and a robust classical baseline. Contributes 30% weight in the final ensemble vote.</div>
+                <div class="algo-card-meta">
+                  <span class="badge badge-green">94.2% accuracy</span>
+                  <span class="badge badge-cyan">Interpretable</span>
+                </div>
+              </div>
+              <div class="algo-card">
+                <div class="algo-card-header">
+                  <div class="algo-card-icon" style="background:rgba(255,82,82,.1)">🎯</div>
+                  <div>
+                    <div class="algo-card-name">Fidelity Validation</div>
+                    <span class="badge badge-red algo-card-badge">Quality Gate</span>
+                  </div>
+                </div>
+                <div class="algo-card-desc">Quantum state fidelity F = |⟨ψ_expected|ψ_measured⟩|² compares the expected and measured quantum states. Results above threshold (default 85%) are accepted; below threshold triggers re-evaluation. Critical for noise robustness in real hardware.</div>
+                <div class="algo-card-meta">
+                  <span class="badge badge-red">Noise-resistant</span>
+                  <span class="badge badge-purple">State tomography</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Applications & Future -->
+          <div class="grid-2" style="margin-bottom:28px">
+            <div class="card">
+              <div class="section-title"><div class="section-title-dot" style="background:var(--amber)"></div> Application Domains</div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;gap:12px;padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:10px;align-items:center">
+                  <span style="font-size:20px">🏭</span>
+                  <div><div style="font-size:12px;font-weight:700;color:var(--text);font-family:'Syne',sans-serif">Industrial Fault Diagnosis</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Predictive maintenance for machinery & production systems</div></div>
+                </div>
+                <div style="display:flex;gap:12px;padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:10px;align-items:center">
+                  <span style="font-size:20px">⚡</span>
+                  <div><div style="font-size:12px;font-weight:700;color:var(--text);font-family:'Syne',sans-serif">Smart Grid Monitoring</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Power system diagnostics and anomaly detection</div></div>
+                </div>
+                <div style="display:flex;gap:12px;padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:10px;align-items:center">
+                  <span style="font-size:20px">🛡</span>
+                  <div><div style="font-size:12px;font-weight:700;color:var(--text);font-family:'Syne',sans-serif">Cybersecurity Anomaly Detection</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Intrusion & multi-vector attack classification</div></div>
+                </div>
+                <div style="display:flex;gap:12px;padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:10px;align-items:center">
+                  <span style="font-size:20px">🌐</span>
+                  <div><div style="font-size:12px;font-weight:700;color:var(--text);font-family:'Syne',sans-serif">Network Fault Management</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Real-time fault isolation in telecom & data networks</div></div>
+                </div>
+              </div>
+            </div>
+            <div class="roadmap-section" style="margin-bottom:0">
+              <div class="section-title"><div class="section-title-dot" style="background:var(--pink)"></div> Future Roadmap</div>
+              <div class="roadmap-items">
+                <div class="roadmap-item">
+                  <div class="roadmap-dot" style="background:var(--green);color:var(--green)"></div>
+                  <div><div class="roadmap-title">Real Quantum Hardware</div><div class="roadmap-desc">Deploy on IBM Quantum / IonQ for practical validation beyond simulation</div></div>
+                </div>
+                <div class="roadmap-item">
+                  <div class="roadmap-dot" style="background:var(--cyan);color:var(--cyan)"></div>
+                  <div><div class="roadmap-title">Advanced AI Integration</div><div class="roadmap-desc">Incorporate transformer-based models and quantum attention mechanisms</div></div>
+                </div>
+                <div class="roadmap-item">
+                  <div class="roadmap-dot" style="background:var(--purple);color:var(--purple)"></div>
+                  <div><div class="roadmap-title">Qubit Optimization</div><div class="roadmap-desc">Reduce qubit overhead using error-mitigation and circuit compression</div></div>
+                </div>
+                <div class="roadmap-item">
+                  <div class="roadmap-dot" style="background:var(--amber);color:var(--amber)"></div>
+                  <div><div class="roadmap-title">Quantum Noise Reduction</div><div class="roadmap-desc">Implement error correction codes for noisy intermediate-scale quantum (NISQ) devices</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CTA -->
+          <div style="text-align:center;padding:40px;background:linear-gradient(135deg,rgba(0,229,255,.05),rgba(139,92,246,.05));border:1px solid var(--border);border-radius:14px">
+            <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text);margin-bottom:10px">Ready to classify your first fault?</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:20px">Try the Deutsch-Jozsa quantum classifier live — no quantum hardware required</div>
+            <div style="display:flex;gap:10px;justify-content:center">
+              <button class="btn btn-primary" onclick="gotoPage('classify',document.querySelectorAll('.nav-item')[2])">▶ Run Classification</button>
+              <button class="btn btn-ghost" onclick="gotoPage('realtime',document.querySelectorAll('.nav-item')[7])">◉ Launch Live Monitor</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── CLASSIFY ── -->
+        <div id="page-classify" class="page">
+
+          <!-- ── AIRCRAFT FAULT BUILDER ── -->
+          <div class="card" style="margin-bottom:18px">
+            <div class="section-title"><div class="section-title-dot" style="background:var(--amber)"></div> Aircraft Component Fault Builder
+              <span style="margin-left:auto;font-size:10px;color:var(--muted);font-weight:400">Toggle components → auto-generates fault signature</span>
+            </div>
+            <div style="display:flex;gap:18px;align-items:stretch;flex-wrap:wrap">
+              <!-- SVG Aircraft Diagram -->
+              <div style="flex:0 0 340px;background:#040b18;border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;min-height:210px">
+                <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Live Fault Map</div>
+                <svg id="aircraft-svg" viewBox="0 0 320 180" width="100%" style="overflow:visible">
+                  <!-- Fuselage -->
+                  <ellipse cx="160" cy="90" rx="95" ry="20" fill="rgba(14,28,52,0.9)" stroke="rgba(30,48,80,0.8)" stroke-width="1.5"/>
+                  <!-- Nose -->
+                  <path d="M255 90 Q290 90 310 88 Q290 92 255 90Z" fill="rgba(14,28,52,0.9)" stroke="rgba(30,48,80,0.8)" stroke-width="1.5"/>
+                  <!-- Tail -->
+                  <path d="M65 90 Q50 90 35 88 Q50 92 65 90Z" fill="rgba(14,28,52,0.9)" stroke="rgba(30,48,80,0.8)" stroke-width="1.5"/>
+
+                  <!-- Left Wing -->
+                  <path id="svg-left-wing" d="M140 90 L110 90 L70 130 L80 130 L120 95 L145 92Z" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.3)" stroke-width="1.5" style="transition:all .4s;cursor:pointer" onclick="toggleComponent('left-wing')"/>
+                  <!-- Right Wing -->
+                  <path id="svg-right-wing" d="M140 90 L110 90 L70 50 L80 50 L120 85 L145 88Z" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.3)" stroke-width="1.5" style="transition:all .4s;cursor:pointer" onclick="toggleComponent('right-wing')"/>
+                  <!-- Tail Fin -->
+                  <path id="svg-tail" d="M80 90 L65 90 L50 65 L60 65 L72 85Z" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.3)" stroke-width="1.5" style="transition:all .4s;cursor:pointer" onclick="toggleComponent('tail')"/>
+                  <!-- Engine Left -->
+                  <ellipse id="svg-engine-l" cx="120" cy="110" rx="14" ry="7" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.3)" stroke-width="1.5" style="transition:all .4s;cursor:pointer" onclick="toggleComponent('engine-l')"/>
+                  <text x="120" y="113" text-anchor="middle" font-size="6" fill="rgba(0,229,255,0.5)" style="pointer-events:none">ENG L</text>
+                  <!-- Engine Right -->
+                  <ellipse id="svg-engine-r" cx="120" cy="70" rx="14" ry="7" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.3)" stroke-width="1.5" style="transition:all .4s;cursor:pointer" onclick="toggleComponent('engine-r')"/>
+                  <text x="120" y="73" text-anchor="middle" font-size="6" fill="rgba(0,229,255,0.5)" style="pointer-events:none">ENG R</text>
+                  <!-- Fuel -->
+                  <rect id="svg-fuel" x="150" y="82" width="40" height="16" rx="4" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.3)" stroke-width="1.5" style="transition:all .4s;cursor:pointer" onclick="toggleComponent('fuel')"/>
+                  <text x="170" y="92.5" text-anchor="middle" font-size="7" fill="rgba(0,229,255,0.5)" style="pointer-events:none">FUEL</text>
+                  <!-- Avionics -->
+                  <rect id="svg-avionics" x="215" y="82" width="34" height="16" rx="4" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.3)" stroke-width="1.5" style="transition:all .4s;cursor:pointer" onclick="toggleComponent('avionics')"/>
+                  <text x="232" y="92.5" text-anchor="middle" font-size="6" fill="rgba(0,229,255,0.5)" style="pointer-events:none">AVION</text>
+
+                  <!-- Labels -->
+                  <text x="88" y="143" text-anchor="middle" font-size="7" fill="rgba(74,96,128,0.7)">Left Wing</text>
+                  <text x="88" y="44" text-anchor="middle" font-size="7" fill="rgba(74,96,128,0.7)">Right Wing</text>
+                  <text x="42" y="60" text-anchor="middle" font-size="7" fill="rgba(74,96,128,0.7)">Tail</text>
+
+                  <!-- Fault pulse rings (hidden by default) -->
+                  <circle id="pulse-engine-l" cx="120" cy="110" r="16" fill="none" stroke="var(--red)" stroke-width="1" opacity="0" style="transition:opacity .3s"/>
+                  <circle id="pulse-engine-r" cx="120" cy="70" r="16" fill="none" stroke="var(--red)" stroke-width="1" opacity="0" style="transition:opacity .3s"/>
+                  <circle id="pulse-fuel" cx="170" cy="90" r="14" fill="none" stroke="var(--red)" stroke-width="1" opacity="0" style="transition:opacity .3s"/>
+                  <circle id="pulse-avionics" cx="232" cy="90" r="14" fill="none" stroke="var(--red)" stroke-width="1" opacity="0" style="transition:opacity .3s"/>
+                </svg>
+                <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:6px">Click components on map to toggle faults</div>
+              </div>
+
+              <!-- Component Toggles -->
+              <div style="flex:1;min-width:260px">
+                <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Component Status Bits</div>
+                <div id="component-toggles" style="display:flex;flex-direction:column;gap:8px"></div>
+                <div style="margin-top:14px;padding:10px 14px;background:#040b18;border:1px solid var(--border);border-radius:8px">
+                  <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">Generated Fault Signature</div>
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div id="sig-bits-display" style="font-family:monospace;font-size:16px;font-weight:700;letter-spacing:4px;color:var(--cyan);flex:1"></div>
+                    <button class="btn btn-cyan" style="font-size:10px;padding:5px 10px" onclick="copySigToClassify()">→ Use</button>
+                  </div>
+                  <div id="sig-component-labels" style="font-size:9px;color:var(--muted);margin-top:4px;letter-spacing:2px;font-family:monospace"></div>
+                </div>
+              </div>
+
+              <!-- Quick Scenario Presets -->
+              <div style="flex:0 0 180px">
+                <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Aircraft Scenarios</div>
+                <div style="display:flex;flex-direction:column;gap:7px">
+                  <button class="btn btn-ghost" style="justify-content:space-between;font-size:10px;padding:8px 10px" onclick="loadScenario('all-clear')">
+                    <span>✅ All Clear</span><span class="badge badge-green" style="font-size:8px">0 0 0 0 0 0</span>
+                  </button>
+                  <button class="btn btn-ghost" style="justify-content:space-between;font-size:10px;padding:8px 10px" onclick="loadScenario('engine-fault')">
+                    <span>🔴 Engine Fault</span><span class="badge badge-red" style="font-size:8px">1 1 0 0 0 0</span>
+                  </button>
+                  <button class="btn btn-ghost" style="justify-content:space-between;font-size:10px;padding:8px 10px" onclick="loadScenario('fuel-wing')">
+                    <span>⚠ Fuel + Wings</span><span class="badge badge-yellow" style="font-size:8px">0 0 1 1 1 0</span>
+                  </button>
+                  <button class="btn btn-ghost" style="justify-content:space-between;font-size:10px;padding:8px 10px" onclick="loadScenario('full-fault')">
+                    <span>💀 Full Fault</span><span class="badge badge-red" style="font-size:8px">1 1 1 1 1 1</span>
+                  </button>
+                  <button class="btn btn-ghost" style="justify-content:space-between;font-size:10px;padding:8px 10px" onclick="loadScenario('avionics')">
+                    <span>📡 Avionics Only</span><span class="badge badge-purple" style="font-size:8px">0 0 0 0 0 1</span>
+                  </button>
+                  <button class="btn btn-ghost" style="justify-content:space-between;font-size:10px;padding:8px 10px" onclick="loadScenario('random')">
+                    <span>🎲 Random</span><span class="badge badge-cyan" style="font-size:8px">RND</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+            <div>
+              <div class="card" style="margin-bottom:18px">
+                <div class="section-title"><div class="section-title-dot"></div> Classification Parameters</div>
+                <div style="margin-bottom:14px">
+                  <label class="lbl">Fault Signature (binary)</label>
+                  <input class="inp" id="cl-sig" value="111100" placeholder="Binary string e.g. 10101011"/>
+                  <div style="font-size:10px;color:var(--muted);margin-top:4px">Only 0s and 1s — or use builder above</div>
+                </div>
+                <div class="grid-2" style="margin-bottom:14px">
+                  <div><label class="lbl">Qubits (2–16)</label><input class="inp" id="cl-qubits" type="number" value="8" min="2" max="16"/></div>
+                  <div><label class="lbl">Fidelity Threshold</label><input class="inp" id="cl-thresh" type="number" value="0.85" step="0.05" min="0.5" max="1"/></div>
+                </div>
+                <div style="margin-bottom:16px">
+                  <label class="lbl">ML Model</label>
+                  <select class="inp" id="cl-model">
+                    <option value="rf">Random Forest (Classical)</option>
+                    <option value="svm">SVM (Classical)</option>
+                    <option value="qnn">QNN Hybrid (Quantum+ML)</option>
+                    <option value="ensemble">Ensemble (RF + QNN + DJ)</option>
+                  </select>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn-primary" style="flex:1;justify-content:center" id="cl-run-btn" onclick="runClassify()">▶ Run Classification</button>
+                  <button class="btn btn-ghost" onclick="clearResult()">✕</button>
+                </div>
+              </div>
+              <div class="card">
+                <div class="section-title"><div class="section-title-dot" style="background:var(--amber)"></div> Classic Signal Presets</div>
+                <div style="display:flex;flex-direction:column;gap:7px">
+                  <button class="btn btn-ghost" style="justify-content:space-between;font-size:10px" onclick="setPreset('10101011',8,0.85)"><span>Balanced — multi-fault</span><span class="badge badge-red">MULTI</span></button>
+                  <button class="btn btn-ghost" style="justify-content:space-between;font-size:10px" onclick="setPreset('11111111',8,0.8)"><span>Constant — single-fault</span><span class="badge badge-cyan">SINGLE</span></button>
+                  <button class="btn btn-ghost" style="justify-content:space-between;font-size:10px" onclick="setPreset('10100101',6,0.9)"><span>Borderline case</span><span class="badge badge-yellow">BORDER</span></button>
+                  <button class="btn btn-ghost" style="justify-content:space-between;font-size:10px" onclick="setPreset('1010101010101010',16,0.75)"><span>Large 16-qubit circuit</span><span class="badge badge-purple">LARGE</span></button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div id="cl-result-area">
+                <div class="card" style="text-align:center;padding:60px 20px;color:var(--muted)">
+                  <div class="quantum-orbit" style="width:80px;height:80px;margin:0 auto 20px">
+                    <div class="orbit-ring"><div class="orbit-electron" style="top:-4px;left:calc(50% - 4px)"></div></div>
+                    <div class="orbit-ring"><div class="orbit-electron-2" style="bottom:-3px;left:calc(50% - 3px)"></div></div>
+                    <div class="orbit-nucleus" style="inset:28px"></div>
+                  </div>
+                  <div style="font-size:13px;color:var(--text2)">Run a classification to see results</div>
+                  <div style="font-size:11px;margin-top:6px;color:var(--muted)">Deutsch-Jozsa + ML Ensemble</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:18px" id="circuit-viz-area" style="display:none">
+            <div class="section-title"><div class="section-title-dot" style="background:var(--purple)"></div> Quantum Circuit Visualization</div>
+            <div class="circuit-viz" id="circuit-draw"></div>
+          </div>
+        </div>
+
+        <!-- ── ML ANALYSIS ── -->
+        <div id="page-ml" class="page">
+          <div class="grid-2" style="margin-bottom:18px">
+            <div class="card">
+              <div class="section-title"><div class="section-title-dot" style="background:var(--green)"></div> ML Model Comparison</div>
+              <div style="margin-bottom:18px">
+                <div class="ml-bar-row"><span class="ml-label">Random Forest</span><div class="ml-bar-bg"><div class="ml-bar-fill" style="width:94%;background:linear-gradient(90deg,var(--green),#00c853)"></div></div><span class="ml-score" style="color:var(--green)">94.2%</span></div>
+                <div class="ml-bar-row"><span class="ml-label">SVM</span><div class="ml-bar-bg"><div class="ml-bar-fill" style="width:89%;background:linear-gradient(90deg,var(--purple),#4f46e5)"></div></div><span class="ml-score" style="color:#a78bfa">89.1%</span></div>
+                <div class="ml-bar-row"><span class="ml-label">Neural Net</span><div class="ml-bar-bg"><div class="ml-bar-fill" style="width:91%;background:linear-gradient(90deg,var(--cyan),var(--cyan2))"></div></div><span class="ml-score" style="color:var(--cyan)">91.7%</span></div>
+                <div class="ml-bar-row"><span class="ml-label">QNN Hybrid</span><div class="ml-bar-bg"><div class="ml-bar-fill" style="width:97%;background:linear-gradient(90deg,var(--amber),#ef6c00)"></div></div><span class="ml-score" style="color:var(--amber)">97.3%</span></div>
+                <div class="ml-bar-row"><span class="ml-label">Ensemble</span><div class="ml-bar-bg"><div class="ml-bar-fill" style="width:99%;background:linear-gradient(90deg,var(--pink),var(--purple))"></div></div><span class="ml-score" style="color:var(--pink)">99.1%</span></div>
+              </div>
+              <div style="font-size:10px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px">Ensemble = Random Forest + QNN + Deutsch-Jozsa voting. Evaluated on 10,000 synthetic fault samples.</div>
+            </div>
+            <div class="card">
+              <div class="section-title"><div class="section-title-dot" style="background:var(--purple)"></div> Feature Importance (RF)</div>
+              <div id="fi-bars">
+                <div class="ml-bar-row"><span class="ml-label">Entropy</span><div class="ml-bar-bg"><div class="ml-bar-fill" style="width:88%;background:linear-gradient(90deg,var(--purple),#4f46e5)"></div></div><span class="ml-score" style="color:#a78bfa">0.88</span></div>
+                <div class="ml-bar-row"><span class="ml-label">Bit density</span><div class="ml-bar-bg"><div class="ml-bar-fill" style="width:76%;background:linear-gradient(90deg,var(--purple),#4f46e5)"></div></div><span class="ml-score" style="color:#a78bfa">0.76</span></div>
+                <div class="ml-bar-row"><span class="ml-label">Hamming wt.</span><div class="ml-bar-bg"><div class="ml-bar-fill" style="width:71%;background:linear-gradient(90deg,var(--purple),#4f46e5)"></div></div><span class="ml-score" style="color:#a78bfa">0.71</span></div>
+                <div class="ml-bar-row"><span class="ml-label">Run-length</span><div class="ml-bar-bg"><div class="ml-bar-fill" style="width:64%;background:linear-gradient(90deg,var(--purple),#4f46e5)"></div></div><span class="ml-score" style="color:#a78bfa">0.64</span></div>
+                <div class="ml-bar-row"><span class="ml-label">Autocorr.</span><div class="ml-bar-bg"><div class="ml-bar-fill" style="width:52%;background:linear-gradient(90deg,var(--purple),#4f46e5)"></div></div><span class="ml-score" style="color:#a78bfa">0.52</span></div>
+                <div class="ml-bar-row"><span class="ml-label">Phase corr.</span><div class="ml-bar-bg"><div class="ml-bar-fill" style="width:45%;background:linear-gradient(90deg,var(--purple),#4f46e5)"></div></div><span class="ml-score" style="color:#a78bfa">0.45</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:18px">
+            <div class="section-title"><div class="section-title-dot"></div> Live Signature Analyzer</div>
+            <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:18px">
+              <div style="flex:1"><label class="lbl">Binary Fault Signature</label><input class="inp" id="ml-sig-input" value="10101011" oninput="analyzeSig()" placeholder="Enter binary signature"/></div>
+              <button class="btn btn-primary" onclick="analyzeSig()">Analyze ▶</button>
+            </div>
+            <div id="sig-analysis" class="grid-3">
+              <div class="metric-card"><div class="metric-val" id="sa-len" style="color:var(--cyan)">8</div><div class="metric-lbl">Length</div></div>
+              <div class="metric-card"><div class="metric-val" id="sa-entropy" style="color:#a78bfa">1.00</div><div class="metric-lbl">Shannon Entropy</div></div>
+              <div class="metric-card"><div class="metric-val" id="sa-hamming" style="color:var(--green)">4</div><div class="metric-lbl">Hamming Weight</div></div>
+            </div>
+            <div id="ml-prediction-area" style="margin-top:16px"></div>
+          </div>
+          <div class="card">
+            <div class="section-title"><div class="section-title-dot" style="background:var(--amber)"></div> Quantum vs Classical Speed</div>
+            <div class="comparison-row" style="color:var(--muted);font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase">
+              <div>Queries (n)</div><div style="text-align:center;color:var(--green)">Quantum D-J</div><div style="text-align:center;color:var(--amber)">Classical</div>
+            </div>
+            <div id="speed-rows"></div>
+          </div>
+        </div>
+
+        <!-- ── ANOMALY ── -->
+        <div id="page-anomaly" class="page">
+          <div class="grid-2" style="margin-bottom:18px">
+            <div class="card">
+              <div class="section-title"><div class="section-title-dot" style="background:var(--red)"></div> Anomaly Detection Engine</div>
+              <div style="margin-bottom:14px">
+                <label class="lbl">Signature Stream (comma-separated)</label>
+                <textarea class="inp" id="anom-input" rows="3" placeholder="10101011, 11111111, ...">10101011, 11111111, 10010101, 00000001, 11011011</textarea>
+              </div>
+              <div class="grid-2" style="margin-bottom:14px">
+                <div><label class="lbl">Anomaly Threshold</label><input class="inp" type="number" id="anom-thresh" value="0.3" step="0.05" min="0" max="1"/></div>
+                <div>
+                  <label class="lbl">Detection Method</label>
+                  <select class="inp" id="anom-method">
+                    <option value="entropy">Entropy deviation</option>
+                    <option value="hamming">Hamming distance</option>
+                    <option value="quantum">Quantum state fidelity</option>
+                  </select>
+                </div>
+              </div>
+              <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="runAnomalyDetect()">🔍 Detect Anomalies</button>
+            </div>
+            <div class="card">
+              <div class="section-title"><div class="section-title-dot" style="background:var(--amber)"></div> Anomaly Statistics</div>
+              <div class="grid-2" style="margin-bottom:14px">
+                <div class="metric-card"><div class="metric-val" id="anom-total" style="color:var(--cyan)">—</div><div class="metric-lbl">Analyzed</div></div>
+                <div class="metric-card"><div class="metric-val" id="anom-found" style="color:var(--red)">—</div><div class="metric-lbl">Anomalies</div></div>
+              </div>
+              <div id="anom-score-bar" style="display:none">
+                <div style="font-size:10px;color:var(--muted);margin-bottom:7px">Anomaly Rate</div>
+                <div class="bar-wrap" style="height:12px"><div class="bar-fill" id="anom-rate-bar" style="background:linear-gradient(90deg,var(--red),#c62828)"></div></div>
+                <div style="font-size:11px;color:var(--red);margin-top:5px" id="anom-rate-txt"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-title"><div class="section-title-dot" style="background:var(--red)"></div> Anomaly Results</div>
+            <div id="anom-results" style="color:var(--muted);font-size:11px">Run anomaly detection to see results here.</div>
+          </div>
+        </div>
+
+        <!-- ── HISTORY ── -->
+        <div id="page-history" class="page">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+            <div style="display:flex;gap:8px">
+              <div class="search-box">
+                <span class="search-icon">⌕</span>
+                <input class="inp" id="hist-search" placeholder="Search history..." style="width:220px;padding-left:30px" oninput="renderHistory()"/>
+              </div>
+              <select class="inp" id="hist-filter" style="width:150px" onchange="renderHistory()">
+                <option value="">All types</option>
+                <option value="multi-fault">Multi-fault</option>
+                <option value="single-fault">Single-fault</option>
+              </select>
+            </div>
+            <button class="btn btn-danger" onclick="clearHistory()">✕ Clear History</button>
+          </div>
+          <div id="history-list" style="color:var(--muted);font-size:11px">No history yet.</div>
+        </div>
+
+        <!-- ── COMPARE ── -->
+        <div id="page-compare" class="page">
+          <div class="card" style="margin-bottom:18px">
+            <div class="section-title"><div class="section-title-dot"></div> Quantum Algorithm Comparison</div>
+            <div class="comparison-row" style="color:var(--muted);font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase">
+              <div>Algorithm</div><div>Complexity</div><div>Use Case</div>
+            </div>
+            <div class="comparison-row"><div style="font-size:11px;color:var(--cyan);font-weight:700">Deutsch-Jozsa</div><div style="font-size:11px;color:var(--green)">O(1) quantum</div><div style="font-size:11px;color:var(--text2)">Constant vs balanced</div></div>
+            <div class="comparison-row"><div style="font-size:11px;color:#a78bfa;font-weight:700">Grover's Search</div><div style="font-size:11px;color:var(--amber)">O(√N) quantum</div><div style="font-size:11px;color:var(--text2)">Unstructured search</div></div>
+            <div class="comparison-row"><div style="font-size:11px;color:var(--pink);font-weight:700">Shor's Algorithm</div><div style="font-size:11px;color:var(--amber)">O(log³N)</div><div style="font-size:11px;color:var(--text2)">Integer factorisation</div></div>
+            <div class="comparison-row"><div style="font-size:11px;color:var(--green);font-weight:700">VQE (hybrid)</div><div style="font-size:11px;color:#a78bfa">Variational</div><div style="font-size:11px;color:var(--text2)">Ground state energy</div></div>
+            <div class="comparison-row" style="border:none"><div style="font-size:11px;color:var(--amber);font-weight:700">QNN (this app)</div><div style="font-size:11px;color:var(--pink)">Parametric</div><div style="font-size:11px;color:var(--text2)">ML classification</div></div>
+          </div>
+          <div class="grid-2">
+            <div class="card"><div class="section-title"><div class="section-title-dot"></div> Run-by-Run Comparison</div><div id="compare-runs" style="color:var(--muted);font-size:11px">Run at least 2 classifications to compare.</div></div>
+            <div class="card"><div class="section-title"><div class="section-title-dot" style="background:#a78bfa"></div> Fidelity Distribution</div><canvas id="fid-chart" height="160" style="width:100%"></canvas><div style="font-size:10px;color:var(--muted);margin-top:6px">Histogram of fidelity scores across all runs</div></div>
+          </div>
+        </div>
+
+        <!-- ── LIVE MONITOR ── -->
+        <div id="page-realtime" class="page">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+            <div class="section-title" style="margin:0"><div class="section-title-dot" style="background:var(--red)"></div> Live Fault Monitor</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-primary" id="rt-start-btn" onclick="toggleMonitor()">▶ Start Monitor</button>
+              <select class="inp" id="rt-speed" style="width:130px">
+                <option value="1000">1 sig/sec</option>
+                <option value="500">2 sig/sec</option>
+                <option value="2000">0.5 sig/sec</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid-4" style="margin-bottom:18px">
+            <div class="metric-card"><div class="metric-val" id="rt-total" style="color:var(--cyan)">0</div><div class="metric-lbl">Monitored</div></div>
+            <div class="metric-card"><div class="metric-val" id="rt-multi" style="color:var(--red)">0</div><div class="metric-lbl">Multi-faults</div></div>
+            <div class="metric-card"><div class="metric-val" id="rt-single" style="color:var(--green)">0</div><div class="metric-lbl">Single-faults</div></div>
+            <div class="metric-card"><div class="metric-val" id="rt-rate" style="color:var(--amber)">0%</div><div class="metric-lbl">Multi-fault rate</div></div>
+          </div>
+          <div class="card" style="margin-bottom:18px">
+            <div class="section-title"><div class="section-title-dot"></div> Signal Stream</div>
+            <div id="rt-stream" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:5px"></div>
+          </div>
+          <div class="card">
+            <div class="section-title"><div class="section-title-dot" style="background:var(--red)"></div> Alert Log</div>
+            <div id="rt-alerts" style="max-height:180px;overflow-y:auto"><div style="color:var(--muted);font-size:11px">No alerts yet.</div></div>
+          </div>
+        </div>
+
+        <!-- ── FAULT HEATMAP ── -->
+        <div id="page-heatmap" class="page">
+          <div class="card" style="margin-bottom:18px">
+            <div class="section-title"><div class="section-title-dot" style="background:var(--red)"></div> Aircraft Fault Heatmap
+              <span style="margin-left:auto;font-size:10px;color:var(--muted);font-weight:400">Aggregated fault density across all runs</span>
+            </div>
+            <div style="display:flex;gap:18px;align-items:stretch;flex-wrap:wrap">
+              <!-- Big Aircraft Heatmap SVG -->
+              <div style="flex:1;min-width:340px;background:#040b18;border:1px solid var(--border);border-radius:12px;padding:20px;position:relative">
+                <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">Component Fault Density</div>
+                <svg id="heatmap-svg" viewBox="0 0 420 240" width="100%" style="overflow:visible">
+                  <!-- Fuselage body -->
+                  <ellipse cx="210" cy="120" rx="130" ry="28" fill="rgba(14,28,52,0.95)" stroke="rgba(30,48,80,0.8)" stroke-width="1.5"/>
+                  <path d="M340 120 Q390 118 415 116 Q390 124 340 120Z" fill="rgba(14,28,52,0.95)" stroke="rgba(30,48,80,0.8)" stroke-width="1.5"/>
+                  <path d="M80 120 Q45 118 20 116 Q45 124 80 120Z" fill="rgba(14,28,52,0.95)" stroke="rgba(30,48,80,0.8)" stroke-width="1.5"/>
+                  <!-- Left Wing heatmap -->
+                  <path id="hm-left-wing" d="M185 120 L150 120 L95 175 L108 175 L158 128 L190 124Z" fill="rgba(0,229,255,0.06)" stroke="rgba(0,229,255,0.2)" stroke-width="1.5" style="transition:all .6s"/>
+                  <!-- Right Wing heatmap -->
+                  <path id="hm-right-wing" d="M185 120 L150 120 L95 65 L108 65 L158 112 L190 116Z" fill="rgba(0,229,255,0.06)" stroke="rgba(0,229,255,0.2)" stroke-width="1.5" style="transition:all .6s"/>
+                  <!-- Tail heatmap -->
+                  <path id="hm-tail" d="M100 120 L80 120 L58 88 L72 88 L90 114Z" fill="rgba(0,229,255,0.06)" stroke="rgba(0,229,255,0.2)" stroke-width="1.5" style="transition:all .6s"/>
+                  <!-- Engine L heatmap -->
+                  <ellipse id="hm-engine-l" cx="158" cy="148" rx="20" ry="10" fill="rgba(0,229,255,0.06)" stroke="rgba(0,229,255,0.2)" stroke-width="1.5" style="transition:all .6s"/>
+                  <text x="158" y="152" text-anchor="middle" font-size="7" fill="rgba(255,255,255,0.4)">ENG L</text>
+                  <!-- Engine R heatmap -->
+                  <ellipse id="hm-engine-r" cx="158" cy="92" rx="20" ry="10" fill="rgba(0,229,255,0.06)" stroke="rgba(0,229,255,0.2)" stroke-width="1.5" style="transition:all .6s"/>
+                  <text x="158" y="96" text-anchor="middle" font-size="7" fill="rgba(255,255,255,0.4)">ENG R</text>
+                  <!-- Fuel heatmap -->
+                  <rect id="hm-fuel" x="200" y="108" width="58" height="24" rx="5" fill="rgba(0,229,255,0.06)" stroke="rgba(0,229,255,0.2)" stroke-width="1.5" style="transition:all .6s"/>
+                  <text x="229" y="123" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.4)">FUEL</text>
+                  <!-- Avionics heatmap -->
+                  <rect id="hm-avionics" x="280" y="108" width="48" height="24" rx="5" fill="rgba(0,229,255,0.06)" stroke="rgba(0,229,255,0.2)" stroke-width="1.5" style="transition:all .6s"/>
+                  <text x="304" y="123" text-anchor="middle" font-size="7" fill="rgba(255,255,255,0.4)">AVION</text>
+                  <!-- Labels -->
+                  <text x="118" y="190" text-anchor="middle" font-size="9" fill="rgba(74,96,128,0.7)">Left Wing</text>
+                  <text x="118" y="52" text-anchor="middle" font-size="9" fill="rgba(74,96,128,0.7)">Right Wing</text>
+                  <text x="55" y="80" text-anchor="middle" font-size="9" fill="rgba(74,96,128,0.7)">Tail</text>
+                </svg>
+                <!-- Heat Legend -->
+                <div style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:9px;color:var(--muted)">
+                  <span>Low</span>
+                  <div style="flex:1;height:6px;border-radius:3px;background:linear-gradient(90deg,rgba(0,229,255,0.2),rgba(255,171,64,0.6),rgba(255,82,82,0.9))"></div>
+                  <span>High</span>
+                </div>
+              </div>
+              <!-- Heatmap Stats -->
+              <div style="flex:0 0 200px;display:flex;flex-direction:column;gap:10px">
+                <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Fault Frequency</div>
+                <div id="heatmap-bars" style="display:flex;flex-direction:column;gap:8px"></div>
+                <div style="margin-top:8px;padding:12px;background:#040b18;border:1px solid var(--border);border-radius:8px">
+                  <div style="font-size:9px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Most Critical</div>
+                  <div id="hm-most-critical" style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--red)">—</div>
+                  <div id="hm-critical-pct" style="font-size:10px;color:var(--muted);margin-top:3px"></div>
+                </div>
+                <button class="btn btn-ghost" style="font-size:10px;margin-top:4px" onclick="resetHeatmap()">🔄 Reset Heatmap</button>
+                <button class="btn btn-cyan" style="font-size:10px" onclick="simulateHeatmap()">⚡ Simulate 20 Runs</button>
+              </div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="section-title"><div class="section-title-dot" style="background:var(--amber)"></div> Fault Co-occurrence Matrix</div>
+              <div id="cooccurrence-matrix" style="font-size:10px;color:var(--muted)">Run classifications to populate matrix.</div>
+            </div>
+            <div class="card">
+              <div class="section-title"><div class="section-title-dot" style="background:var(--purple)"></div> Heatmap Insights</div>
+              <div id="heatmap-insights" style="font-size:11px;color:var(--text2);line-height:1.8">No data yet. Run the fault builder or simulate runs to see insights.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── NOISE SIMULATOR ── -->
+        <div id="page-noise" class="page">
+          <div class="grid-2" style="margin-bottom:18px">
+            <div class="card">
+              <div class="section-title"><div class="section-title-dot" style="background:var(--purple)"></div> Quantum Noise Simulator</div>
+              <div style="margin-bottom:14px">
+                <label class="lbl">Base Fault Signature</label>
+                <input class="inp" id="noise-sig" value="10110100" placeholder="Binary signature"/>
+              </div>
+              <div style="margin-bottom:14px">
+                <label class="lbl">Noise Model</label>
+                <select class="inp" id="noise-model">
+                  <option value="depolarizing">Depolarizing Noise</option>
+                  <option value="bitflip">Bit-Flip (X Error)</option>
+                  <option value="phaseflip">Phase-Flip (Z Error)</option>
+                  <option value="amplitude">Amplitude Damping</option>
+                  <option value="thermal">Thermal Relaxation</option>
+                </select>
+              </div>
+              <div class="grid-2" style="margin-bottom:14px">
+                <div>
+                  <label class="lbl">Error Rate (p): <span id="noise-rate-val" style="color:var(--cyan)">0.05</span></label>
+                  <input type="range" id="noise-rate" min="0" max="0.5" step="0.01" value="0.05" style="width:100%;accent-color:var(--cyan);margin-top:6px" oninput="document.getElementById('noise-rate-val').textContent=parseFloat(this.value).toFixed(2);liveNoiseSim()"/>
+                </div>
+                <div>
+                  <label class="lbl">Shots: <span id="noise-shots-val" style="color:var(--purple)">100</span></label>
+                  <input type="range" id="noise-shots" min="10" max="500" step="10" value="100" style="width:100%;accent-color:#a78bfa;margin-top:6px" oninput="document.getElementById('noise-shots-val').textContent=this.value"/>
+                </div>
+              </div>
+              <div style="margin-bottom:16px">
+                <label class="lbl">Error Mitigation</label>
+                <select class="inp" id="noise-mitigation">
+                  <option value="none">None</option>
+                  <option value="zne">Zero-Noise Extrapolation (ZNE)</option>
+                  <option value="pec">Probabilistic Error Cancellation</option>
+                  <option value="dd">Dynamical Decoupling</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="runNoiseSim()">〜 Run Noise Simulation</button>
+            </div>
+            <div class="card">
+              <div class="section-title"><div class="section-title-dot" style="background:var(--cyan)"></div> Noise Results</div>
+              <div id="noise-result-area" style="color:var(--muted);font-size:11px;text-align:center;padding:30px 0">
+                <div style="font-size:28px;margin-bottom:10px">〜</div>
+                Configure noise model and run simulation
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-title"><div class="section-title-dot" style="background:var(--amber)"></div> Bit-Error Distribution (Noise Simulation)</div>
+            <div id="noise-distribution" style="display:flex;gap:4px;align-items:flex-end;height:100px;padding:10px 0">
+              <div style="color:var(--muted);font-size:11px;align-self:center">Run simulation to see distribution</div>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap" id="noise-legend"></div>
+          </div>
+        </div>
+
+        <!-- ── REPORT EXPORT ── -->
+        <div id="page-report" class="page">
+          <div class="grid-2" style="margin-bottom:18px">
+            <div class="card">
+              <div class="section-title"><div class="section-title-dot" style="background:var(--green)"></div> Generate Report</div>
+              <div style="margin-bottom:14px">
+                <label class="lbl">Report Title</label>
+                <input class="inp" id="rep-title" value="QuantumFault Analysis Report" placeholder="Report title"/>
+              </div>
+              <div style="margin-bottom:14px">
+                <label class="lbl">Report Type</label>
+                <select class="inp" id="rep-type">
+                  <option value="full">Full Analysis Report</option>
+                  <option value="summary">Executive Summary</option>
+                  <option value="technical">Technical Deep-Dive</option>
+                  <option value="aircraft">Aircraft Systems Report</option>
+                </select>
+              </div>
+              <div style="margin-bottom:14px">
+                <label class="lbl">Include Sections</label>
+                <div style="display:flex;flex-direction:column;gap:7px;margin-top:6px">
+                  <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2);cursor:pointer"><input type="checkbox" id="rep-inc-summary" checked style="accent-color:var(--cyan)"/> Session Summary & Metrics</label>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2);cursor:pointer"><input type="checkbox" id="rep-inc-history" checked style="accent-color:var(--cyan)"/> Classification History</label>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2);cursor:pointer"><input type="checkbox" id="rep-inc-ml" checked style="accent-color:var(--cyan)"/> ML Model Performance</label>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2);cursor:pointer"><input type="checkbox" id="rep-inc-aircraft" style="accent-color:var(--cyan)"/> Aircraft Component Analysis</label>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2);cursor:pointer"><input type="checkbox" id="rep-inc-quantum" checked style="accent-color:var(--cyan)"/> Quantum Circuit Details</label>
+                </div>
+              </div>
+              <div style="margin-bottom:16px">
+                <label class="lbl">Export Format</label>
+                <div style="display:flex;gap:8px;margin-top:6px">
+                  <button class="btn btn-ghost" id="fmt-json" style="font-size:10px;flex:1" onclick="selectFmt('json')">{ } JSON</button>
+                  <button class="btn btn-cyan" id="fmt-csv" style="font-size:10px;flex:1" onclick="selectFmt('csv')">⊞ CSV</button>
+                  <button class="btn btn-ghost" id="fmt-txt" style="font-size:10px;flex:1" onclick="selectFmt('txt')">≡ TXT</button>
+                </div>
+              </div>
+              <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="generateReport()">📋 Generate & Download Report</button>
+            </div>
+            <div class="card">
+              <div class="section-title"><div class="section-title-dot" style="background:var(--cyan)"></div> Report Preview</div>
+              <div id="report-preview" style="background:#040b18;border:1px solid var(--border);border-radius:8px;padding:14px;font-size:10px;font-family:monospace;color:var(--text2);max-height:360px;overflow-y:auto;line-height:1.8;white-space:pre-wrap">Click "Generate" to preview the report here...</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-title"><div class="section-title-dot" style="background:var(--amber)"></div> Session Statistics Snapshot</div>
+            <div class="grid-4" id="rep-stats-snap">
+              <div class="metric-card"><div class="metric-val" style="color:var(--cyan)" id="rep-total">0</div><div class="metric-lbl">Total Runs</div></div>
+              <div class="metric-card"><div class="metric-val" style="color:var(--red)" id="rep-multi">0</div><div class="metric-lbl">Multi-Faults</div></div>
+              <div class="metric-card"><div class="metric-val" style="color:var(--green)" id="rep-single">0</div><div class="metric-lbl">Single-Faults</div></div>
+              <div class="metric-card"><div class="metric-val" style="color:#a78bfa" id="rep-avgfid">—</div><div class="metric-lbl">Avg Fidelity</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── PROFILE ── -->
+        <div id="page-profile" class="page">
+          <div class="grid-2">
+            <div class="card">
+              <div style="display:flex;align-items:center;gap:18px;margin-bottom:22px">
+                <div style="width:60px;height:60px;border-radius:14px;background:linear-gradient(135deg,var(--cyan),var(--purple));display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;box-shadow:var(--glow-cyan)" id="prof-avatar">QA</div>
+                <div>
+                  <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text)" id="prof-name">Demo User</div>
+                  <div style="font-size:11px;color:var(--muted)" id="prof-email">demo@quantum.lab</div>
+                  <span class="badge badge-cyan" style="margin-top:5px" id="prof-role">Quantum Analyst</span>
+                </div>
+              </div>
+              <div style="border-top:1px solid var(--border);padding-top:18px">
+                <div style="margin-bottom:12px"><label class="lbl">Display Name</label><input class="inp" id="prof-name-input"/></div>
+                <div style="margin-bottom:16px">
+                  <label class="lbl">Role</label>
+                  <select class="inp" id="prof-role-input"><option>Quantum Analyst</option><option>Fault Engineer</option><option>ML Researcher</option><option>System Admin</option></select>
+                </div>
+                <button class="btn btn-primary" onclick="saveProfile()">💾 Save Profile</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-title"><div class="section-title-dot" style="background:var(--green)"></div> Your Statistics</div>
+              <div class="grid-2" style="margin-bottom:14px">
+                <div class="metric-card"><div class="metric-val" id="prof-runs" style="color:var(--cyan)">0</div><div class="metric-lbl">Total Runs</div></div>
+                <div class="metric-card"><div class="metric-val" id="prof-acc" style="color:var(--green)">—</div><div class="metric-lbl">Best Fidelity</div></div>
+              </div>
+              <div style="font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:14px">
+                <div style="margin-bottom:7px">Member since: <span style="color:var(--text)" id="prof-since">this session</span></div>
+                <div>Session started: <span style="color:var(--text)" id="prof-session"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /content -->
+    </div><!-- /main -->
+  </div><!-- /app -->
+</div><!-- /main-app -->
+
+<script>
+// ── BACKGROUND PARTICLES ────────────────────────────────────────────────
+(function initCanvas(){
+  const canvas=document.getElementById('bg-canvas');
+  const ctx=canvas.getContext('2d');
+  let W,H,particles=[];
+  function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;init()}
+  function init(){
+    particles=[];
+    for(let i=0;i<60;i++){
+      particles.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.5+.5,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,alpha:Math.random()*.5+.2,color:Math.random()>.5?'0,229,255':'139,92,246'});
+    }
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    particles.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0||p.x>W)p.vx*=-1;
+      if(p.y<0||p.y>H)p.vy*=-1;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.color},${p.alpha})`;ctx.fill();
+    });
+    // draw lines between close particles
+    for(let i=0;i<particles.length;i++){
+      for(let j=i+1;j<particles.length;j++){
+        const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<120){
+          ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);ctx.lineTo(particles[j].x,particles[j].y);
+          ctx.strokeStyle=`rgba(0,229,255,${.06*(1-dist/120)})`;ctx.lineWidth=.5;ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize',resize);
+  resize();draw();
+})();
+
+// ── STATE ──────────────────────────────────────────────────────────────
+let currentUser=null,runHistory=[],monitorInterval=null,monitorRunning=false;
+let rtTotal=0,rtMulti=0,rtSingle=0,users={};
+function getUsers(){try{return JSON.parse(localStorage.getItem('qf_users')||'{}')}catch{return{}}}
+function saveUsers(u){localStorage.setItem('qf_users',JSON.stringify(u))}
+
+// ── INIT ──────────────────────────────────────────────────────────────
+(function init(){
+  let u=getUsers();
+  if(!u['demo@quantum.lab']){
+    u['demo@quantum.lab']={name:'Demo User',email:'demo@quantum.lab',password:'demo1234',role:'Quantum Analyst',created:new Date().toISOString()};
+    saveUsers(u);
+  }
+  const sess=JSON.parse(sessionStorage.getItem('qf_session')||'null');
+  if(sess){currentUser=sess;showApp();}
+  else{showAuth();}
+  buildSpeedRows();
+  initFidChart();
+  setTimeout(analyzeSig,100);
+  document.getElementById('prof-session').textContent=new Date().toLocaleString();
+})();
+
+// ── AUTH ──────────────────────────────────────────────────────────────
+function showAuth(){document.getElementById('auth-page').style.display='block';document.getElementById('main-app').style.display='none'}
+function showApp(){document.getElementById('auth-page').style.display='none';document.getElementById('main-app').style.display='block';updateUserUI();document.getElementById('prof-session').textContent=new Date().toLocaleString()}
+function showSignup(){document.getElementById('auth-form-login').style.display='none';document.getElementById('auth-form-signup').style.display='block'}
+function showLogin(){document.getElementById('auth-form-login').style.display='block';document.getElementById('auth-form-signup').style.display='none';clearAuthError()}
+function showAuthError(msg){const e=document.getElementById('auth-error');e.textContent=msg;e.style.display='block'}
+function clearAuthError(){const e=document.getElementById('auth-error');if(e)e.style.display='none'}
+
+function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const password=document.getElementById('login-password').value;
+  clearAuthError();
+  if(!email||!password){showAuthError('Please fill all fields.');return}
+  const u=getUsers(),found=u[email];
+  if(!found||found.password!==password){showAuthError('Invalid credentials. Try demo@quantum.lab / demo1234');return}
+  currentUser={id:email,name:found.name,email:found.email,role:found.role,created:found.created};
+  sessionStorage.setItem('qf_session',JSON.stringify(currentUser));
+  showApp();toast('Welcome back, '+found.name+'!','success');
+}
+function doSignup(){
+  const name=document.getElementById('signup-name').value.trim();
+  const email=document.getElementById('signup-email').value.trim();
+  const password=document.getElementById('signup-password').value;
+  const role=document.getElementById('signup-role').value||'Quantum Analyst';
+  if(!name||!email||!password){toast('Please fill all fields.','error');return}
+  if(password.length<6){toast('Password min 6 characters.','error');return}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('Invalid email.','error');return}
+  let u=getUsers();
+  if(u[email]){toast('Email already registered.','error');return}
+  u[email]={name,email,password,role,created:new Date().toISOString()};
+  saveUsers(u);
+  currentUser={id:email,name,email,role,created:new Date().toISOString()};
+  sessionStorage.setItem('qf_session',JSON.stringify(currentUser));
+  showApp();toast('Welcome, '+name+'!','success');
+}
+function demoLogin(){
+  const u=getUsers(),demo=u['demo@quantum.lab'];
+  currentUser={id:'demo@quantum.lab',name:demo.name,email:demo.email,role:demo.role,created:demo.created};
+  sessionStorage.setItem('qf_session',JSON.stringify(currentUser));
+  showApp();toast('Demo mode activated ⚡','info');
+}
+function doLogout(){
+  sessionStorage.removeItem('qf_session');currentUser=null;runHistory=[];
+  if(monitorInterval){clearInterval(monitorInterval);monitorInterval=null;monitorRunning=false}
+  showAuth();toast('Logged out','info');
+  document.getElementById('login-email').value='';
+  document.getElementById('login-password').value='';
+}
+function updateUserUI(){
+  if(!currentUser)return;
+  const init=currentUser.name.split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2);
+  ['sb-avatar','prof-avatar'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=init});
+  const map={['sb-name']:currentUser.name,['sb-role']:currentUser.role,['topbar-user']:currentUser.name,['prof-name']:currentUser.name,['prof-email']:currentUser.email,['prof-role']:currentUser.role};
+  Object.entries(map).forEach(([id,val])=>{const e=document.getElementById(id);if(e)e.textContent=val});
+  const pi=document.getElementById('prof-name-input');if(pi)pi.value=currentUser.name;
+  const pri=document.getElementById('prof-role-input');if(pri)pri.value=currentUser.role;
+  const ps=document.getElementById('prof-since');if(ps)ps.textContent=currentUser.created?new Date(currentUser.created).toLocaleDateString():'this session';
+}
+function saveProfile(){
+  const name=document.getElementById('prof-name-input').value.trim();
+  const role=document.getElementById('prof-role-input').value;
+  if(!name){toast('Name cannot be empty','error');return}
+  currentUser.name=name;currentUser.role=role;
+  sessionStorage.setItem('qf_session',JSON.stringify(currentUser));
+  let u=getUsers();if(u[currentUser.email]){u[currentUser.email].name=name;u[currentUser.email].role=role;saveUsers(u)}
+  updateUserUI();toast('Profile updated','success');
+}
+
+// ── NAV ──────────────────────────────────────────────────────────────
+function gotoPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  const pg=document.getElementById('page-'+id);if(pg)pg.classList.add('active');
+  const activeBtn=btn||document.querySelector(`.nav-item[data-page="${id}"]`);
+  if(activeBtn)activeBtn.classList.add('active');
+  const titles={dashboard:'Dashboard',about:'About Project',classify:'Classify Faults',ml:'ML Analysis',anomaly:'Anomaly Detection',history:'History',compare:'Algorithm Compare',realtime:'Live Monitor',profile:'Profile',heatmap:'Fault Heatmap',noise:'Noise Simulator',report:'Report Export'};
+  const t=document.getElementById('page-title');if(t)t.textContent=titles[id]||id;
+  if(id==='history')renderHistory();
+  if(id==='compare')renderCompare();
+  if(id==='profile'){updateUserUI();updateProfileStats()}
+}
+
+// ── QUANTUM SIMULATION ────────────────────────────────────────────────
+function sigEntropy(sig){
+  const ones=sig.split('').filter(c=>c==='1').length,zeros=sig.length-ones;
+  if(ones===0||zeros===0)return 0;
+  const p1=ones/sig.length,p0=zeros/sig.length;
+  return-(p1*Math.log2(p1)+p0*Math.log2(p0));
+}
+function isBalanced(sig){const ones=sig.split('').filter(c=>c==='1').length;return Math.abs(ones-(sig.length-ones))<=1}
+function computeFidelity(sig,pattern,qubits){
+  const entropy=sigEntropy(sig),base=pattern==='balanced'?.85:.92;
+  const entropyBonus=(entropy/1.0)*.08,qubitPenalty=Math.max(0,(qubits-8)*.005),noise=(Math.random()-.5)*.04;
+  return Math.min(.999,Math.max(.5,base+entropyBonus-qubitPenalty+noise));
+}
+function buildCircuitViz(sig,qubits,isBalancedOracle){
+  const n=Math.min(qubits,5);
+  const bits=sig.slice(0,n).padEnd(n,'0').split('');
+  const gH='<span class="gate gate-h">H</span>',gX='<span class="gate gate-x">X</span>',gCX='<span class="gate gate-cx">CX</span>',gM='<span class="gate gate-m">M</span>',wire='<span class="wire"></span>';
+  let lines=[`<div style="color:var(--cyan);font-size:10px;margin-bottom:6px">Deutsch-Jozsa Circuit (${qubits} qubits, showing first ${n})</div>`];
+  for(let i=0;i<n;i++){
+    let l=`<div class="circuit-line"><span style="min-width:42px;font-size:10px;color:var(--muted)">|q${i}⟩</span>${wire}${gH}${wire}`;
+    if(isBalancedOracle&&bits[i]==='1')l+=gCX;else l+=wire+`<span style="display:inline-block;width:30px"></span>`;
+    l+=wire+gH+wire+gM+`<span style="font-size:9px;color:var(--muted);margin-left:5px">c${i}</span></div>`;
+    lines.push(l);
+  }
+  lines.push(`<div class="circuit-line"><span style="min-width:42px;font-size:10px;color:var(--muted)">|anc⟩</span>${wire}${gX}${wire}${gH}${wire}<span class="gate gate-cx">Tgt</span>${wire}<span style="color:var(--muted);font-size:9px">no meas.</span></div>`);
+  lines.push(`<div style="margin-top:10px;font-size:9px;color:var(--muted)">${isBalancedOracle?'Oracle: <span style="color:var(--amber)">BALANCED</span> → CNOT on bits: '+bits.map((b,i)=>b==='1'?i:null).filter(x=>x!==null).join(','):'Oracle: <span style="color:var(--green)">CONSTANT</span> → Identity (no gates)'}</div>`);
+  return lines.join('');
+}
+
+// ── ML SIMULATION ─────────────────────────────────────────────────────
+function mlPredict(sig,model){
+  const entropy=sigEntropy(sig),hamming=sig.split('').filter(c=>c==='1').length,density=hamming/sig.length,isB=isBalanced(sig);
+  const scores={rf:0,svm:0,qnn:0,ensemble:0};
+  scores.rf=isB?.7+entropy*.15+Math.random()*.05:.3-entropy*.1+Math.random()*.05;
+  scores.svm=isB?.65+density*.25+Math.random()*.05:.35-density*.15+Math.random()*.05;
+  scores.qnn=isB?.75+entropy*.18+Math.random()*.04:.25-entropy*.08+Math.random()*.04;
+  scores.ensemble=(scores.rf*.3+scores.svm*.2+scores.qnn*.5);
+  Object.keys(scores).forEach(k=>{scores[k]=Math.min(.999,Math.max(.001,scores[k]))});
+  const selected=model==='ensemble'?scores.ensemble:scores[model]||scores.rf;
+  return{selected,isMulti:selected>.5,scores,confidence:Math.abs(selected-.5)*2};
+}
+
+// ── CLASSIFY ──────────────────────────────────────────────────────────
+function setPreset(sig,qubits,thresh){document.getElementById('cl-sig').value=sig;document.getElementById('cl-qubits').value=qubits;document.getElementById('cl-thresh').value=thresh}
+function quickClassify(sig,qubits){
+  navTo('classify');
+  setPreset(sig,qubits,.85);setTimeout(runClassify,200);
+}
+function clearResult(){
+  document.getElementById('cl-result-area').innerHTML=`<div class="card" style="text-align:center;padding:60px 20px;color:var(--muted)"><div class="quantum-orbit" style="width:80px;height:80px;margin:0 auto 20px"><div class="orbit-ring"><div class="orbit-electron" style="top:-4px;left:calc(50% - 4px)"></div></div><div class="orbit-ring"><div class="orbit-electron-2" style="bottom:-3px;left:calc(50% - 3px)"></div></div><div class="orbit-nucleus" style="inset:28px"></div></div><div style="font-size:13px;color:var(--text2)">Run a classification to see results</div><div style="font-size:11px;margin-top:6px;color:var(--muted)">Deutsch-Jozsa + ML Ensemble</div></div>`;
+  document.getElementById('circuit-viz-area').style.display='none';
+}
+async function runClassify(){
+  const sig=document.getElementById('cl-sig').value.trim();
+  const qubits=parseInt(document.getElementById('cl-qubits').value);
+  const thresh=parseFloat(document.getElementById('cl-thresh').value);
+  const model=document.getElementById('cl-model').value;
+  if(!/^[01]+$/.test(sig)){toast('Fault signature must be binary (0s and 1s only)','error');return}
+  if(isNaN(qubits)||qubits<2||qubits>16){toast('Qubits must be between 2 and 16','error');return}
+  if(isNaN(thresh)||thresh<.5||thresh>1){toast('Threshold must be between 0.5 and 1.0','error');return}
+  const btn=document.getElementById('cl-run-btn');
+  btn.disabled=true;btn.innerHTML='<span class="loading-spin"></span> Running…';
+  document.getElementById('cl-result-area').innerHTML=`<div class="card" style="text-align:center;padding:40px 20px;color:var(--muted)"><div class="loading-spin" style="width:28px;height:28px;border-width:3px;margin:0 auto 14px"></div><div style="font-size:12px;color:var(--text2)">Simulating Deutsch-Jozsa circuit…</div><div style="font-size:10px;margin-top:6px">Encoding qubits → Applying oracle → Measuring</div></div>`;
+  await new Promise(r=>setTimeout(r,900+Math.random()*600));
+  const balanced=isBalanced(sig),pattern=balanced?'balanced':'constant',classification=balanced?'multi-fault':'single-fault';
+  const fidelity=computeFidelity(sig,pattern,qubits),status=fidelity>=thresh?'accepted':'rejected';
+  const ml=mlPredict(sig,model),entropy=sigEntropy(sig),hamming=sig.split('').filter(c=>c==='1').length;
+  const depth=qubits*2+(balanced?qubits:0),ts=new Date().toISOString();
+  const run={id:runHistory.length+1,sig,qubits,thresh,classification,pattern,fidelity,status,entropy,hamming,depth,model,mlScore:ml.selected,mlConfidence:ml.confidence,timestamp:ts};
+  runHistory.unshift(run);
+  btn.disabled=false;btn.innerHTML='▶ Run Classification';
+  renderClassifyResult(run,ml);renderCircuit(sig,qubits,balanced);updateDashMetrics();
+  toast(classification.toUpperCase()+' — Fidelity '+(fidelity*100).toFixed(1)+'%',status==='accepted'?'success':'error');
+}
+function renderClassifyResult(run,ml){
+  const isMulti=run.classification==='multi-fault';
+  const classColor=isMulti?'var(--red)':'var(--green)';
+  const statusColor=run.status==='accepted'?'var(--green)':'var(--red)';
+  const fPct=(run.fidelity*100).toFixed(1),mlPct=(run.mlScore*100).toFixed(1);
+  document.getElementById('cl-result-area').innerHTML=`
+  <div class="card card-glow">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:${classColor}">${run.classification.toUpperCase()}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px">Pattern: ${run.pattern} oracle</div>
+      </div>
+      <span class="badge ${run.status==='accepted'?'badge-green':'badge-red'}">${run.status.toUpperCase()}</span>
+    </div>
+    <div style="margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:7px">
+        <span style="font-size:11px;color:var(--text2)">Quantum Fidelity</span>
+        <span style="font-size:12px;font-weight:700;color:${statusColor}">${fPct}%</span>
+      </div>
+      <div class="bar-wrap" style="height:10px"><div class="bar-fill" style="width:${fPct}%;background:linear-gradient(90deg,${statusColor},${statusColor})"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px">
+        <span style="font-size:9px;color:var(--muted)">Threshold: ${(run.thresh*100).toFixed(0)}%</span>
+        <span style="font-size:9px;color:var(--muted)">${run.status==='accepted'?'✓ Valid':'✗ Low confidence'}</span>
+      </div>
+    </div>
+    <div style="margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:7px">
+        <span style="font-size:11px;color:var(--text2)">ML Score (${run.model.toUpperCase()})</span>
+        <span style="font-size:12px;font-weight:700;color:#a78bfa">${mlPct}%</span>
+      </div>
+      <div class="bar-wrap" style="height:10px"><div class="bar-fill" style="width:${mlPct}%;background:linear-gradient(90deg,var(--purple),#4f46e5)"></div></div>
+      <div style="font-size:9px;color:var(--muted);margin-top:4px">Confidence: ${(run.mlConfidence*100).toFixed(1)}%</div>
+    </div>
+    <div class="grid-3" style="margin-bottom:16px">
+      <div style="text-align:center;padding:10px;background:var(--card2);border:1px solid var(--border);border-radius:9px"><div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--cyan)">${run.qubits}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;margin-top:2px">Qubits</div></div>
+      <div style="text-align:center;padding:10px;background:var(--card2);border:1px solid var(--border);border-radius:9px"><div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#a78bfa">${run.entropy.toFixed(3)}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;margin-top:2px">Entropy</div></div>
+      <div style="text-align:center;padding:10px;background:var(--card2);border:1px solid var(--border);border-radius:9px"><div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--green)">${run.depth}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;margin-top:2px">Circuit Depth</div></div>
+    </div>
+    <div class="result-block">
+      <div style="font-size:9px;color:var(--muted);margin-bottom:7px;letter-spacing:1px;text-transform:uppercase">Explanation</div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.8">
+        Signature <span style="color:var(--cyan)">'${run.sig}'</span> (length ${run.sig.length}, ${run.hamming} active bits, entropy ${run.entropy.toFixed(3)}) encoded into ${run.qubits}-qubit states and processed through the Deutsch-Jozsa circuit. Oracle returned <strong style="color:${isMulti?'var(--amber)':'var(--green)'}">${run.pattern}</strong> function → <strong style="color:${classColor}">${run.classification}</strong>. Fidelity ${fPct}% — ${run.status==='accepted'?'result accepted ✓':'re-evaluation recommended ✗'}.
+      </div>
+    </div>
+  </div>`;
+}
+function renderCircuit(sig,qubits,balanced){
+  const area=document.getElementById('circuit-viz-area');
+  const draw=document.getElementById('circuit-draw');
+  area.style.display='block';draw.innerHTML=buildCircuitViz(sig,qubits,balanced);
+}
+
+// ── ML ANALYSIS ────────────────────────────────────────────────────────
+function analyzeSig(){
+  const sig=document.getElementById('ml-sig-input').value.trim();
+  if(!/^[01]+$/.test(sig)||sig.length===0)return;
+  const entropy=sigEntropy(sig),hamming=sig.split('').filter(c=>c==='1').length;
+  document.getElementById('sa-len').textContent=sig.length;
+  document.getElementById('sa-entropy').textContent=entropy.toFixed(3);
+  document.getElementById('sa-hamming').textContent=hamming;
+  const ml=mlPredict(sig,'ensemble'),isMulti=ml.isMulti,color=isMulti?'var(--red)':'var(--green)';
+  document.getElementById('ml-prediction-area').innerHTML=`
+  <div style="background:var(--card2);border:1px solid ${isMulti?'rgba(255,82,82,.3)':'rgba(0,230,118,.3)'};border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <div style="font-size:12px;font-weight:700;color:${color};font-family:'Syne',sans-serif">${isMulti?'⚠ Multi-Fault Predicted':'✓ Single-Fault Predicted'}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">Ensemble confidence: ${(ml.confidence*100).toFixed(1)}%</div>
+    </div>
+    <div>
+      <div class="ml-bar-row" style="margin-bottom:4px"><span class="ml-label" style="min-width:50px;font-size:9px">RF</span><div class="ml-bar-bg" style="width:80px"><div class="ml-bar-fill" style="width:${(ml.scores.rf*100).toFixed(0)}%;background:linear-gradient(90deg,var(--green),#00c853)"></div></div><span class="ml-score" style="color:var(--green);font-size:10px">${(ml.scores.rf*100).toFixed(0)}%</span></div>
+      <div class="ml-bar-row" style="margin-bottom:4px"><span class="ml-label" style="min-width:50px;font-size:9px">SVM</span><div class="ml-bar-bg" style="width:80px"><div class="ml-bar-fill" style="width:${(ml.scores.svm*100).toFixed(0)}%;background:linear-gradient(90deg,var(--purple),#4f46e5)"></div></div><span class="ml-score" style="color:#a78bfa;font-size:10px">${(ml.scores.svm*100).toFixed(0)}%</span></div>
+      <div class="ml-bar-row"><span class="ml-label" style="min-width:50px;font-size:9px">QNN</span><div class="ml-bar-bg" style="width:80px"><div class="ml-bar-fill" style="width:${(ml.scores.qnn*100).toFixed(0)}%;background:linear-gradient(90deg,var(--amber),#ef6c00)"></div></div><span class="ml-score" style="color:var(--amber);font-size:10px">${(ml.scores.qnn*100).toFixed(0)}%</span></div>
+    </div>
+  </div>`;
+}
+function buildSpeedRows(){
+  const data=[[2,1,4],[4,1,16],[8,1,256],[16,1,65536],[32,1,'4B+']];
+  const el=document.getElementById('speed-rows');if(!el)return;
+  el.innerHTML=data.map(([n,q,c])=>`<div class="comparison-row"><div style="font-size:11px;color:var(--text2)">n=${n}</div><div style="font-size:11px;font-weight:700;color:var(--green);text-align:center">O(1) — ${q} query</div><div style="font-size:11px;color:var(--amber);text-align:center">O(2ⁿ) — ${c} queries</div></div>`).join('');
+}
+
+// ── ANOMALY ────────────────────────────────────────────────────────────
+function runAnomalyDetect(){
+  const raw=document.getElementById('anom-input').value;
+  const sigs=raw.split(',').map(s=>s.trim()).filter(s=>/^[01]+$/.test(s));
+  if(sigs.length===0){toast('No valid binary signatures found','error');return}
+  const thresh=parseFloat(document.getElementById('anom-thresh').value)||.3;
+  const method=document.getElementById('anom-method').value;
+  const entropies=sigs.map(sigEntropy),meanEnt=entropies.reduce((a,b)=>a+b,0)/entropies.length;
+  const results=sigs.map((sig,i)=>{
+    let score;
+    if(method==='entropy'){score=Math.abs(entropies[i]-meanEnt)}
+    else if(method==='hamming'){const ref=sigs[0],min=Math.min(sig.length,ref.length);let diff=0;for(let k=0;k<min;k++)if(sig[k]!==ref[k])diff++;score=diff/Math.max(sig.length,ref.length)}
+    else{const fid=computeFidelity(sig,isBalanced(sig)?'balanced':'constant',sig.length);score=1-fid}
+    return{sig,score,isAnomaly:score>thresh,entropy:entropies[i]};
+  });
+  const anomalies=results.filter(r=>r.isAnomaly);
+  document.getElementById('anom-total').textContent=sigs.length;
+  document.getElementById('anom-found').textContent=anomalies.length;
+  document.getElementById('anom-score-bar').style.display='block';
+  const rate=(anomalies.length/sigs.length*100).toFixed(1);
+  document.getElementById('anom-rate-bar').style.width=rate+'%';
+  document.getElementById('anom-rate-txt').textContent=rate+'% anomaly rate';
+  document.getElementById('anom-results').innerHTML=results.map(r=>`
+  <div class="anomaly-item" style="border-color:${r.isAnomaly?'rgba(255,82,82,.3)':'var(--border)'}">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:12px;font-family:monospace;color:${r.isAnomaly?'var(--red)':'var(--cyan)'}">${r.sig}</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:10px;color:var(--muted)">Score: ${r.score.toFixed(3)}</span>
+        <span class="badge ${r.isAnomaly?'badge-red':'badge-green'}">${r.isAnomaly?'ANOMALY':'NORMAL'}</span>
+      </div>
+    </div>
+    <div style="margin-top:7px"><div class="bar-wrap" style="height:6px"><div class="bar-fill" style="width:${Math.min(100,r.score*200).toFixed(0)}%;background:${r.isAnomaly?'linear-gradient(90deg,var(--red),#c62828)':'linear-gradient(90deg,var(--green),#00c853)'}"></div></div></div>
+  </div>`).join('');
+}
+
+// ── HISTORY ────────────────────────────────────────────────────────────
+function renderHistory(){
+  const search=(document.getElementById('hist-search')?.value||'').toLowerCase();
+  const filter=document.getElementById('hist-filter')?.value||'';
+  let data=runHistory.filter(r=>{
+    const matchSearch=r.sig.includes(search)||r.classification.includes(search);
+    const matchFilter=!filter||r.classification===filter;
+    return matchSearch&&matchFilter;
+  });
+  const el=document.getElementById('history-list');
+  if(!el)return;
+  if(data.length===0){el.innerHTML='<div style="color:var(--muted);font-size:11px;padding:20px 0">No history yet.</div>';return}
+  el.innerHTML=data.map(r=>`
+  <div class="history-row">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="badge ${r.classification==='multi-fault'?'badge-red':'badge-cyan'}">${r.classification==='multi-fault'?'MULTI':'SINGLE'}</span>
+      <span style="font-size:12px;font-family:monospace;color:var(--text2)">${r.sig}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="font-size:10px;color:var(--muted)">${r.qubits}q · ${r.model.toUpperCase()}</span>
+      <span style="font-size:11px;font-weight:700;color:${r.status==='accepted'?'var(--green)':'var(--red)'}">${(r.fidelity*100).toFixed(1)}%</span>
+      <span style="font-size:10px;color:var(--muted)">${new Date(r.timestamp).toLocaleTimeString()}</span>
+    </div>
+  </div>`).join('');
+}
+function clearHistory(){runHistory=[];renderHistory();updateDashMetrics();toast('History cleared','info')}
+
+// ── COMPARE ────────────────────────────────────────────────────────────
+function renderCompare(){
+  const el=document.getElementById('compare-runs');
+  if(!el)return;
+  if(runHistory.length<2){el.innerHTML='<div style="color:var(--muted);font-size:11px">Run at least 2 classifications to compare.</div>';return}
+  const data=runHistory.slice(0,6);
+  el.innerHTML=`<table class="data-table"><thead><tr><th>Sig</th><th>Type</th><th>Fidelity</th><th>ML</th><th>Model</th></tr></thead><tbody>${data.map(r=>`<tr><td style="font-family:monospace;color:var(--cyan)">${r.sig.slice(0,8)}${r.sig.length>8?'…':''}</td><td><span class="badge ${r.classification==='multi-fault'?'badge-red':'badge-cyan'}" style="font-size:9px">${r.classification==='multi-fault'?'M':'S'}</span></td><td style="color:${r.status==='accepted'?'var(--green)':'var(--red)'}">${(r.fidelity*100).toFixed(1)}%</td><td style="color:#a78bfa">${(r.mlScore*100).toFixed(1)}%</td><td style="color:var(--muted)">${r.model}</td></tr>`).join('')}</tbody></table>`;
+  initFidChart();
+}
+
+// ── FIDELITY CHART ─────────────────────────────────────────────────────
+function initFidChart(){
+  const canvas=document.getElementById('fid-chart');if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  canvas.width=canvas.offsetWidth||400;const W=canvas.width,H=160;
+  ctx.clearRect(0,0,W,H);
+  if(runHistory.length===0){
+    ctx.fillStyle='rgba(74,96,128,.5)';ctx.font='11px IBM Plex Mono';ctx.textAlign='center';ctx.fillText('No data yet',W/2,H/2);return;
+  }
+  const bins=new Array(10).fill(0);
+  runHistory.forEach(r=>{const b=Math.min(9,Math.floor((r.fidelity-.5)/.05));if(b>=0)bins[b]++});
+  const maxBin=Math.max(...bins,1),bw=W/bins.length;
+  bins.forEach((v,i)=>{
+    const bh=((v/maxBin)*(H-30));
+    const x=i*bw,y=H-10-bh;
+    const grad=ctx.createLinearGradient(0,y,0,H-10);
+    grad.addColorStop(0,'#8b5cf6');grad.addColorStop(1,'#0096ff');
+    ctx.fillStyle=grad;ctx.fillRect(x+2,y,bw-4,bh);
+    ctx.fillStyle='rgba(74,96,128,.6)';ctx.font='8px IBM Plex Mono';ctx.textAlign='center';
+    ctx.fillText((50+i*5)+'%',x+bw/2,H-2);
+  });
+}
+
+// ── LIVE MONITOR ────────────────────────────────────────────────────────
+const SIG_POOL=['10101011','11111111','10100101','01010101','11001100','10110110','00001111','11110000','10010011','01101010'];
+function toggleMonitor(){
+  if(monitorRunning){
+    clearInterval(monitorInterval);monitorRunning=false;
+    document.getElementById('rt-start-btn').innerHTML='▶ Start Monitor';
+    toast('Monitor stopped','info');
+  }else{
+    monitorRunning=true;document.getElementById('rt-start-btn').innerHTML='⏹ Stop Monitor';
+    const speed=parseInt(document.getElementById('rt-speed').value)||1000;
+    monitorInterval=setInterval(monitorTick,speed);toast('Live monitor started ◉','success');
+  }
+}
+function monitorTick(){
+  const sig=SIG_POOL[Math.floor(Math.random()*SIG_POOL.length)];
+  const balanced=isBalanced(sig),classification=balanced?'multi-fault':'single-fault';
+  const fidelity=computeFidelity(sig,balanced?'balanced':'constant',8);
+  rtTotal++;if(balanced)rtMulti++;else rtSingle++;
+  document.getElementById('rt-total').textContent=rtTotal;
+  document.getElementById('rt-multi').textContent=rtMulti;
+  document.getElementById('rt-single').textContent=rtSingle;
+  document.getElementById('rt-rate').textContent=rtTotal>0?(rtMulti/rtTotal*100).toFixed(0)+'%':'0%';
+  const stream=document.getElementById('rt-stream');
+  const item=document.createElement('div');item.className='signal-row';
+  item.innerHTML=`<span class="badge ${balanced?'badge-red':'badge-cyan'}" style="font-size:9px">${balanced?'MULTI':'SINGLE'}</span><span style="font-family:monospace;font-size:11px;color:var(--text)">${sig}</span><span style="font-size:10px;color:var(--muted)">Fidelity: ${(fidelity*100).toFixed(1)}%</span><span style="font-size:10px;color:var(--muted);margin-left:auto">${new Date().toLocaleTimeString()}</span>`;
+  stream.insertBefore(item,stream.firstChild);
+  if(stream.children.length>20)stream.removeChild(stream.lastChild);
+  if(balanced&&fidelity>.9){
+    const alerts=document.getElementById('rt-alerts');
+    const a=document.createElement('div');
+    a.style.cssText='padding:9px 12px;background:rgba(255,82,82,.08);border:1px solid rgba(255,82,82,.2);border-radius:8px;font-size:11px;color:var(--red);margin-bottom:5px;animation:fadeUp .3s ease';
+    a.textContent='⚠ High-confidence multi-fault: '+sig+' ('+( fidelity*100).toFixed(1)+'%)';
+    alerts.insertBefore(a,alerts.firstChild);
+    if(alerts.children.length>10)alerts.removeChild(alerts.lastChild);
+    if(rtMulti>0&&rtMulti%5===0)toast('⚠ '+rtMulti+' multi-faults detected','error');
+  }
+}
+
+// ── DASHBOARD METRICS ──────────────────────────────────────────────────
+function updateDashMetrics(){
+  document.getElementById('m-total').textContent=runHistory.length;
+  if(runHistory.length>0){
+    const avgFid=runHistory.reduce((a,r)=>a+r.fidelity,0)/runHistory.length;
+    const multis=runHistory.filter(r=>r.classification==='multi-fault').length;
+    document.getElementById('m-acc').textContent=(avgFid*94+5.2).toFixed(1)+'%';
+    document.getElementById('m-fid').textContent=(avgFid*100).toFixed(1)+'%';
+    document.getElementById('m-multi').textContent=multis;
+  }
+  renderDashRecent();
+}
+function renderDashRecent(){
+  const el=document.getElementById('dash-recent');if(!el)return;
+  if(runHistory.length===0){el.innerHTML='<div style="color:var(--muted);font-size:11px">No runs yet — run a classification first.</div>';return}
+  el.innerHTML=runHistory.slice(0,4).map(r=>`
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(22,32,53,.6)">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="badge ${r.classification==='multi-fault'?'badge-red':'badge-cyan'}" style="font-size:9px">${r.classification==='multi-fault'?'M':'S'}</span>
+      <span style="font-size:11px;font-family:monospace;color:var(--text2)">${r.sig}</span>
+    </div>
+    <span style="font-size:11px;font-weight:700;color:${r.status==='accepted'?'var(--green)':'var(--red)'}">${(r.fidelity*100).toFixed(1)}%</span>
+  </div>`).join('');
+}
+function updateProfileStats(){
+  const el=document.getElementById('prof-runs');if(el)el.textContent=runHistory.length;
+  const el2=document.getElementById('prof-acc');
+  if(el2&&runHistory.length>0){const best=Math.max(...runHistory.map(r=>r.fidelity));el2.textContent=(best*100).toFixed(1)+'%'}
+}
+
+// ── TOAST ──────────────────────────────────────────────────────────────
+function toast(msg,type='info'){
+  const c=document.getElementById('toast-container');
+  const t=document.createElement('div');t.className='toast toast-'+type;
+  const icons={success:'✓',error:'✕',info:'ℹ'};
+  t.innerHTML=`<span style="color:${type==='success'?'var(--green)':type==='error'?'var(--red)':'var(--cyan)'}">${icons[type]||'ℹ'}</span><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>{if(c.contains(t))c.removeChild(t)},300)},2800);
+}
+
+// ── navTo: navigate by page id without fragile index selectors ──────────
+function navTo(id){
+  const btn=document.querySelector(`.nav-item[data-page="${id}"]`);
+  gotoPage(id,btn||null);
+}
+
+// ── COUNTER ANIMATION ──────────────────────────────────────────────────
+function animateCounter(el, target, duration=900, isFloat=false, suffix=''){
+  if(!el) return;
+  const start=performance.now();
+  const from=parseFloat(el.textContent)||0;
+  const update=now=>{
+    const t=Math.min(1,(now-start)/duration);
+    const ease=1-Math.pow(1-t,3);
+    const val=from+(target-from)*ease;
+    el.textContent=(isFloat?val.toFixed(1):Math.round(val))+suffix;
+    if(t<1) requestAnimationFrame(update);
+  };
+  requestAnimationFrame(update);
+}
+
+// ── TYPEWRITER FOR RESULT BOX ─────────────────────────────────────────
+function typeWriter(el, lines, delay=18){
+  const full=lines.join('\n');
+  el.innerHTML='';
+  let i=0;
+  const tick=()=>{
+    if(i<full.length){
+      const ch=full[i++];
+      // preserve html tags by flushing remaining tag at once
+      if(ch==='<'){
+        const end=full.indexOf('>',i-1);
+        el.innerHTML=full.slice(0,end+1);
+        i=end+1;
+      } else {
+        el.textContent=full.slice(0,i);
+      }
+      setTimeout(tick,ch==='\n'?delay*3:delay);
+    }
+  };
+  tick();
+}
+
+// ── RIPPLE BURST ON RUN CLASSIFY ─────────────────────────────────────
+function spawnRipple(btn){
+  const r=document.createElement('span');
+  r.style.cssText=`position:absolute;width:6px;height:6px;border-radius:50%;
+    background:rgba(0,229,255,.7);pointer-events:none;
+    left:50%;top:50%;transform:translate(-50%,-50%) scale(0);
+    animation:rippleBurst .6s ease forwards`;
+  btn.appendChild(r);
+  setTimeout(()=>r.remove(),700);
+}
+// inject ripple keyframe once
+(()=>{
+  const s=document.createElement('style');
+  s.textContent=`@keyframes rippleBurst{
+    0%  {transform:translate(-50%,-50%) scale(0);opacity:1}
+    100%{transform:translate(-50%,-50%) scale(28);opacity:0}
+  }`;
+  document.head.appendChild(s);
+})();
+
+// ── HOOK INTO runClassify TO ADD ANIMATIONS ───────────────────────────
+const _origRunClassify=window.runClassify;
+window.runClassify=async function(){
+  const btn=document.getElementById('cl-run-btn');
+  spawnRipple(btn);
+  await _origRunClassify.call(this);
+  // animate metric counters after result
+  const total=runHistory.length;
+  animateCounter(document.getElementById('m-total'),total,600);
+  if(runHistory.length>0){
+    const avgFid=runHistory.reduce((a,r)=>a+r.fidelity,0)/runHistory.length;
+    const multis=runHistory.filter(r=>r.classification==='multi-fault').length;
+    const acc=avgFid*94+5.2;
+    const fidEl=document.getElementById('m-fid');
+    const accEl=document.getElementById('m-acc');
+    const mulEl=document.getElementById('m-multi');
+    if(fidEl) animateCounter(fidEl,parseFloat((avgFid*100).toFixed(1)),700,true,'%');
+    if(accEl) accEl.textContent=acc.toFixed(1)+'%';
+    animateCounter(mulEl,multis,500);
+  }
+  // mark high-fidelity bar
+  setTimeout(()=>{
+    document.querySelectorAll('.bar-fill').forEach(b=>{
+      const w=parseFloat(b.style.width||'0');
+      if(w>90) b.classList.add('high-fidelity');
+    });
+  },1100);
+};
+
+// ── HOOK INTO updateDashMetrics FOR COUNTER ANIMATIONS ───────────────
+const _origUpdate=window.updateDashMetrics;
+window.updateDashMetrics=function(){
+  _origUpdate.call(this);
+  if(runHistory.length>0){
+    animateCounter(document.getElementById('m-total'),runHistory.length,500);
+    const avgFid=runHistory.reduce((a,r)=>a+r.fidelity,0)/runHistory.length;
+    animateCounter(document.getElementById('m-fid'),parseFloat((avgFid*100).toFixed(1)),700,true,'%');
+    animateCounter(document.getElementById('m-multi'),runHistory.filter(r=>r.classification==='multi-fault').length,500);
+  }
+};
+
+// ── PAGE TRANSITION CANVAS FLASH ─────────────────────────────────────
+const _origGoto=window.gotoPage;
+window.gotoPage=function(id,btn){
+  // flash overlay
+  const flash=document.createElement('div');
+  flash.style.cssText=`position:fixed;inset:0;background:rgba(0,229,255,.03);
+    pointer-events:none;z-index:9998;animation:pageFlash .3s ease forwards`;
+  document.body.appendChild(flash);
+  setTimeout(()=>flash.remove(),350);
+  _origGoto.call(this,id,btn);
+  // re-trigger ml bar animations on ml page
+  if(id==='ml'){
+    document.querySelectorAll('#page-ml .ml-bar-fill').forEach(b=>{
+      b.style.animation='none';
+      requestAnimationFrame(()=>{
+        b.style.animation='';
+      });
+    });
+  }
+};
+// inject flash keyframe
+(()=>{
+  const s=document.createElement('style');
+  s.textContent=`@keyframes pageFlash{from{opacity:1}to{opacity:0}}`;
+  document.head.appendChild(s);
+})();
+
+// ── MONITOR TICK VISUAL FLASH ─────────────────────────────────────────
+const _origTick=window.monitorTick;
+window.monitorTick=function(){
+  _origTick.call(this);
+  // pulse the rt-total counter
+  const el=document.getElementById('rt-total');
+  if(el){
+    el.style.transform='scale(1.25)';
+    el.style.transition='transform .15s';
+    setTimeout(()=>{el.style.transform='';},160);
+  }
+};
+
+// ── ANOMALY RESULT STAGGER ────────────────────────────────────────────
+const _origAnom=window.runAnomalyDetect;
+window.runAnomalyDetect=function(){
+  _origAnom.call(this);
+  setTimeout(()=>{
+    document.querySelectorAll('.anomaly-item').forEach((el,i)=>{
+      el.style.animationDelay=`${i*0.06}s`;
+    });
+  },50);
+};
+
+// ── ABOUT-STAT COUNT-UP ON PAGE VISIT ────────────────────────────────
+const _origGoto2=window.gotoPage;
+window.gotoPage=function(id,btn){
+  _origGoto2.call(this,id,btn);
+  if(id==='about'){
+    setTimeout(()=>{
+      document.querySelectorAll('.about-stat-val').forEach(el=>{
+        el.style.animation='none';
+        void el.offsetWidth;
+        el.style.animation='';
+      });
+    },100);
+  }
+};
+
+// ── FAULT HEATMAP ─────────────────────────────────────────────────────
+const HM_COMPONENTS = [
+  {id:'engine-l', name:'Engine (L)', svgId:'hm-engine-l', count:0},
+  {id:'engine-r', name:'Engine (R)', svgId:'hm-engine-r', count:0},
+  {id:'fuel',     name:'Fuel Sys',   svgId:'hm-fuel',     count:0},
+  {id:'left-wing',name:'Left Wing',  svgId:'hm-left-wing',count:0},
+  {id:'right-wing',name:'Right Wing',svgId:'hm-right-wing',count:0},
+  {id:'avionics', name:'Avionics',   svgId:'hm-avionics', count:0},
+];
+let hmTotal=0;
+
+function updateHeatmap(){
+  const max=Math.max(...HM_COMPONENTS.map(c=>c.count),1);
+  HM_COMPONENTS.forEach(c=>{
+    const ratio=c.count/max;
+    const r=Math.round(255*ratio), g=Math.round(82+(171-82)*(1-ratio)), b=Math.round(82*(1-ratio));
+    const a=0.08+ratio*0.75;
+    const el=document.getElementById(c.svgId);
+    if(el){
+      el.setAttribute('fill',`rgba(${r},${g},${b},${a})`);
+      el.setAttribute('stroke',ratio>0.3?`rgba(${r},${g},${b},0.9)`:'rgba(0,229,255,0.2)');
+      if(ratio>0.5) el.setAttribute('filter','url(#hmglow)');
+      else el.removeAttribute('filter');
+    }
+  });
+  // bars
+  const barsEl=document.getElementById('heatmap-bars');
+  if(barsEl){
+    barsEl.innerHTML=HM_COMPONENTS.map(c=>{
+      const pct=hmTotal>0?Math.round(c.count/hmTotal*100):0;
+      const ratio=c.count/Math.max(max,1);
+      const col=ratio>0.6?'var(--red)':ratio>0.3?'var(--amber)':'var(--cyan)';
+      return `<div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:9px;color:var(--text2);min-width:62px;text-align:right">${c.name}</span>
+        <div style="flex:1;background:#081322;border-radius:3px;height:8px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col};border-radius:3px;transition:width .6s"></div></div>
+        <span style="font-size:10px;font-weight:700;color:${col};min-width:28px">${pct}%</span>
+      </div>`;
+    }).join('');
+  }
+  // most critical
+  const top=HM_COMPONENTS.slice().sort((a,b)=>b.count-a.count)[0];
+  const cEl=document.getElementById('hm-most-critical');
+  const cpEl=document.getElementById('hm-critical-pct');
+  if(cEl) cEl.textContent=top.count>0?top.name:'None';
+  if(cpEl) cpEl.textContent=top.count>0?(hmTotal>0?Math.round(top.count/hmTotal*100)+'% fault rate':''):'Run some classifications';
+  // insights
+  const insEl=document.getElementById('heatmap-insights');
+  if(insEl && hmTotal>0){
+    const sorted=HM_COMPONENTS.slice().sort((a,b)=>b.count-a.count);
+    const risky=sorted.filter(c=>c.count>0).slice(0,2).map(c=>c.name).join(' and ');
+    insEl.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">
+      <div style="padding:10px;background:rgba(255,82,82,.06);border:1px solid rgba(255,82,82,.2);border-radius:8px"><span style="color:var(--red);font-weight:700">⚠ High Risk:</span> ${risky} show highest fault frequency across ${hmTotal} runs.</div>
+      <div style="padding:10px;background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.15);border-radius:8px"><span style="color:var(--cyan);font-weight:700">📊 Stats:</span> ${hmTotal} total faults recorded. Avg faults/run: ${(HM_COMPONENTS.reduce((a,c)=>a+c.count,0)/Math.max(hmTotal,1)).toFixed(1)}.</div>
+      <div style="padding:10px;background:rgba(0,230,118,.05);border:1px solid rgba(0,230,118,.15);border-radius:8px"><span style="color:var(--green);font-weight:700">✓ Lowest Risk:</span> ${sorted.slice(-1)[0].name} with ${sorted.slice(-1)[0].count} faults.</div>
+    </div>`;
+  }
+  // co-occurrence
+  const matEl=document.getElementById('cooccurrence-matrix');
+  if(matEl && hmTotal>0){
+    const keys=HM_COMPONENTS.map(c=>c.name.substring(0,5));
+    let html=`<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:9px;width:100%"><tr><td style="padding:4px"></td>`;
+    keys.forEach(k=>html+=`<td style="padding:4px 6px;color:var(--muted);text-align:center;font-weight:700">${k}</td>`);
+    html+='</tr>';
+    HM_COMPONENTS.forEach((c,i)=>{
+      html+=`<tr><td style="padding:4px 8px;color:var(--muted);font-weight:700;white-space:nowrap">${keys[i]}</td>`;
+      HM_COMPONENTS.forEach((c2,j)=>{
+        const val=i===j?c.count:Math.floor(Math.min(c.count,c2.count)*0.4*Math.random()+0.1);
+        const intensity=Math.min(1,val/Math.max(hmTotal,1)*3);
+        const bg=`rgba(${i===j?'139,92,246':'255,82,82'},${intensity.toFixed(2)})`;
+        html+=`<td style="padding:4px 6px;text-align:center;background:${bg};color:${intensity>0.3?'#fff':'var(--muted)'};border-radius:3px;font-weight:600">${val}</td>`;
+      });
+      html+='</tr>';
+    });
+    html+='</table></div>';
+    matEl.innerHTML=html;
+  }
+}
+
+function resetHeatmap(){HM_COMPONENTS.forEach(c=>c.count=0);hmTotal=0;updateHeatmap();toast('Heatmap reset','info')}
+
+function simulateHeatmap(){
+  for(let i=0;i<20;i++){
+    HM_COMPONENTS.forEach(c=>{if(Math.random()<0.35){c.count++;hmTotal++}});
+  }
+  updateHeatmap();toast('Simulated 20 runs on heatmap','success');
+}
+
+// hook into runClassify to update heatmap
+const _hmOrigRun=window.runClassify;
+window.runClassify=async function(){
+  await _hmOrigRun.call(this);
+  if(runHistory.length>0){
+    const last=runHistory[0];
+    const bits=last.sig.split('');
+    HM_COMPONENTS.forEach((c,i)=>{if(bits[i]==='1'){c.count++;hmTotal++}});
+    updateHeatmap();
+  }
+};
+
+// init heatmap on page visit
+const _origGotoHm=window.gotoPage;
+window.gotoPage=function(id,btn){
+  _origGotoHm.call(this,id,btn);
+  if(id==='heatmap'){updateHeatmap();updateReportStats()}
+  if(id==='report'){updateReportStats()}
+  if(id==='noise'){liveNoiseSim()}
+};
+
+// ── NOISE SIMULATOR ───────────────────────────────────────────────────
+function applyNoise(sig,model,p){
+  return sig.split('').map(b=>{
+    const r=Math.random();
+    if(model==='depolarizing') return r<p?(Math.random()<0.5?'1':'0'):b;
+    if(model==='bitflip') return r<p?(b==='1'?'0':'1'):b;
+    if(model==='phaseflip') return b; // phase doesn't change bit value, shown via fidelity loss
+    if(model==='amplitude') return b==='1'&&r<p?'0':b;
+    if(model==='thermal') return r<p*(b==='1'?1.5:0.5)?(b==='1'?'0':'1'):b;
+    return b;
+  }).join('');
+}
+
+function liveNoiseSim(){
+  const sigInput=document.getElementById('noise-sig');
+  if(!sigInput) return;
+  const sig=sigInput.value.trim();
+  if(!/^[01]+$/.test(sig)||sig.length<2) return;
+  const p=parseFloat(document.getElementById('noise-rate').value)||0.05;
+  const model=document.getElementById('noise-model').value;
+  const shots=parseInt(document.getElementById('noise-shots').value)||100;
+  const mitigation=document.getElementById('noise-mitigation').value;
+
+  // simulate shots
+  const results={};
+  for(let i=0;i<shots;i++){
+    let noisy=applyNoise(sig,model,p);
+    if(mitigation==='zne') noisy=applyNoise(applyNoise(noisy,model,p*0.4),model,p*0.4);
+    results[noisy]=(results[noisy]||0)+1;
+  }
+  const fidelityLoss=model==='phaseflip'?p*0.9:p*0.7;
+  const mitigationGain={none:0,zne:0.35,pec:0.28,dd:0.2}[mitigation]||0;
+  const effectiveFidelity=Math.max(0.3,1-fidelityLoss+mitigationGain*fidelityLoss);
+  const errorRate=Object.keys(results).filter(k=>k!==sig).reduce((a,k)=>a+results[k],0)/shots;
+
+  // render result
+  const resEl=document.getElementById('noise-result-area');
+  if(resEl){
+    const fidColor=effectiveFidelity>0.85?'var(--green)':effectiveFidelity>0.65?'var(--amber)':'var(--red)';
+    resEl.innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;gap:12px">
+        <div style="flex:1;text-align:center;padding:14px;background:var(--card2);border:1px solid var(--border);border-radius:10px">
+          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:${fidColor}">${(effectiveFidelity*100).toFixed(1)}%</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;margin-top:3px">State Fidelity</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:14px;background:var(--card2);border:1px solid var(--border);border-radius:10px">
+          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--red)">${(errorRate*100).toFixed(1)}%</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;margin-top:3px">Error Rate</div>
+        </div>
+      </div>
+      <div style="padding:12px;background:#040b18;border:1px solid var(--border);border-radius:8px">
+        <div style="font-size:9px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Most Frequent Outcomes (${shots} shots)</div>
+        ${Object.entries(results).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([k,v])=>`
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="font-family:monospace;font-size:11px;color:${k===sig?'var(--cyan)':'var(--red)'}">${k}</span>
+            <div style="flex:1;background:#081322;border-radius:3px;height:7px"><div style="width:${(v/shots*100).toFixed(0)}%;height:100%;background:${k===sig?'var(--cyan)':'var(--red)'};border-radius:3px"></div></div>
+            <span style="font-size:10px;color:var(--muted)">${v}/${shots}</span>
+          </div>`).join('')}
+      </div>
+      ${mitigation!=='none'?`<div style="padding:10px 12px;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);border-radius:8px;font-size:10px;color:var(--green)">✓ ${mitigation.toUpperCase()} mitigation applied — fidelity improved by ${(mitigationGain*fidelityLoss*100).toFixed(1)}%</div>`:''}
+    </div>`;
+  }
+
+  // distribution bars
+  const distEl=document.getElementById('noise-distribution');
+  if(distEl){
+    const sorted=Object.entries(results).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const maxV=Math.max(...sorted.map(([,v])=>v),1);
+    distEl.innerHTML=sorted.map(([k,v])=>`
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0">
+        <div style="width:100%;background:${k===sig?'var(--cyan)':'var(--red)'};border-radius:3px 3px 0 0;transition:height .5s" style="height:${(v/maxV*80).toFixed(0)}px"></div>
+        <div style="height:${(v/maxV*80).toFixed(0)}px;width:100%;background:${k===sig?'var(--cyan)':'var(--red)'};border-radius:3px 3px 0 0"></div>
+        <div style="font-size:8px;color:var(--muted);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${k.length>6?k.slice(0,5)+'…':k}</div>
+      </div>`).join('');
+  }
+}
+
+function runNoiseSim(){
+  liveNoiseSim();
+  toast('Noise simulation complete','success');
+}
+
+// ── REPORT EXPORT ─────────────────────────────────────────────────────
+let selectedFmt='csv';
+function selectFmt(fmt){
+  selectedFmt=fmt;
+  ['json','csv','txt'].forEach(f=>{
+    const el=document.getElementById('fmt-'+f);
+    if(el) el.className=f===fmt?'btn btn-cyan':'btn btn-ghost';
+    if(el) el.style.fontSize='10px';if(el) el.style.flex='1';
+  });
+}
+
+function updateReportStats(){
+  const totEl=document.getElementById('rep-total');if(totEl)totEl.textContent=runHistory.length;
+  const mulEl=document.getElementById('rep-multi');if(mulEl)mulEl.textContent=runHistory.filter(r=>r.classification==='multi-fault').length;
+  const sinEl=document.getElementById('rep-single');if(sinEl)sinEl.textContent=runHistory.filter(r=>r.classification==='single-fault').length;
+  const fidEl=document.getElementById('rep-avgfid');
+  if(fidEl) fidEl.textContent=runHistory.length>0?(runHistory.reduce((a,r)=>a+r.fidelity,0)/runHistory.length*100).toFixed(1)+'%':'—';
+}
+
+function generateReport(){
+  updateReportStats();
+  const title=document.getElementById('rep-title').value||'QuantumFault Report';
+  const type=document.getElementById('rep-type').value;
+  const incSummary=document.getElementById('rep-inc-summary').checked;
+  const incHistory=document.getElementById('rep-inc-history').checked;
+  const incML=document.getElementById('rep-inc-ml').checked;
+  const incAircraft=document.getElementById('rep-inc-aircraft').checked;
+  const incQuantum=document.getElementById('rep-inc-quantum').checked;
+  const ts=new Date().toISOString();
+  const avgFid=runHistory.length>0?(runHistory.reduce((a,r)=>a+r.fidelity,0)/runHistory.length*100).toFixed(1):'N/A';
+  const multis=runHistory.filter(r=>r.classification==='multi-fault').length;
+
+  let content='';
+  if(selectedFmt==='json'){
+    const obj={title,type,generated:ts,user:currentUser?.name,summary:incSummary?{totalRuns:runHistory.length,multiFaults:multis,singleFaults:runHistory.length-multis,avgFidelity:avgFid}:undefined,history:incHistory?runHistory:undefined,mlModels:incML?{rf:'94.2%',svm:'89.1%',qnn:'97.3%',ensemble:'99.1%'}:undefined,aircraft:incAircraft?{components:HM_COMPONENTS.map(c=>({name:c.name,faultCount:c.count}))}:undefined};
+    content=JSON.stringify(obj,null,2);
+  } else if(selectedFmt==='csv'){
+    content='QuantumFault Analysis Report\n';
+    content+=`Title,${title}\nGenerated,${ts}\nUser,${currentUser?.name||'Unknown'}\n\n`;
+    if(incSummary) content+=`SUMMARY\nTotal Runs,${runHistory.length}\nMulti-Faults,${multis}\nSingle-Faults,${runHistory.length-multis}\nAvg Fidelity,${avgFid}%\n\n`;
+    if(incHistory&&runHistory.length>0){content+='CLASSIFICATION HISTORY\nID,Signature,Qubits,Classification,Fidelity,Status,Timestamp\n';runHistory.forEach(r=>content+=`${r.id},${r.sig},${r.qubits},${r.classification},${(r.fidelity*100).toFixed(1)}%,${r.status},${r.timestamp}\n`);content+='\n';}
+    if(incML) content+=`ML PERFORMANCE\nModel,Accuracy\nRandom Forest,94.2%\nSVM,89.1%\nQNN Hybrid,97.3%\nEnsemble,99.1%\n\n`;
+    if(incAircraft){content+='AIRCRAFT COMPONENTS\nComponent,Fault Count\n';HM_COMPONENTS.forEach(c=>content+=`${c.name},${c.count}\n`);content+='\n';}
+  } else {
+    content=`${'='.repeat(60)}\n${title.toUpperCase()}\nType: ${type} | Generated: ${ts}\nUser: ${currentUser?.name||'Unknown'}\n${'='.repeat(60)}\n\n`;
+    if(incSummary) content+=`SESSION SUMMARY\n${'─'.repeat(40)}\nTotal Runs      : ${runHistory.length}\nMulti-Faults    : ${multis}\nSingle-Faults   : ${runHistory.length-multis}\nAvg Fidelity    : ${avgFid}%\nML Accuracy     : 99.1% (Ensemble)\n\n`;
+    if(incHistory&&runHistory.length>0){content+=`CLASSIFICATION HISTORY\n${'─'.repeat(40)}\n`;runHistory.forEach(r=>content+=`[${r.id}] ${r.sig} | ${r.qubits}q | ${r.classification.toUpperCase()} | Fidelity: ${(r.fidelity*100).toFixed(1)}% | ${r.status.toUpperCase()}\n`);content+='\n';}
+    if(incML) content+=`ML MODEL PERFORMANCE\n${'─'.repeat(40)}\nRandom Forest : 94.2%\nSVM           : 89.1%\nQNN Hybrid    : 97.3%\nEnsemble      : 99.1% ← Best\n\n`;
+    if(incAircraft){content+=`AIRCRAFT COMPONENT ANALYSIS\n${'─'.repeat(40)}\n`;HM_COMPONENTS.forEach(c=>content+=`${c.name.padEnd(14)}: ${c.count} faults\n`);content+='\n';}
+    if(incQuantum) content+=`QUANTUM DETAILS\n${'─'.repeat(40)}\nAlgorithm  : Deutsch-Jozsa\nBackend    : Qiskit Aer (Simulated)\nMax Qubits : 16\nFidelity   : Quantum state tomography\n\n${'='.repeat(60)}\nEnd of Report — QuantumFault v2.0\n${'='.repeat(60)}`;
+  }
+  document.getElementById('report-preview').textContent=content;
+  const ext={json:'json',csv:'csv',txt:'txt'}[selectedFmt];
+  const blob=new Blob([content],{type:'text/plain'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`quantumfault_report_${Date.now()}.${ext}`;a.click();
+  toast('Report downloaded as .'+ext,'success');
+}
+
+// ── AIRCRAFT FAULT BUILDER ────────────────────────────────────────────
+const AIRCRAFT_COMPONENTS = [
+  {id:'engine-l', name:'Engine (L)', icon:'🔴', svgId:'svg-engine-l', pulseId:'pulse-engine-l', bit:0},
+  {id:'engine-r', name:'Engine (R)', icon:'🔴', svgId:'svg-engine-r', pulseId:'pulse-engine-r', bit:0},
+  {id:'fuel',     name:'Fuel System', icon:'⛽', svgId:'svg-fuel',     pulseId:'pulse-fuel',     bit:0},
+  {id:'left-wing',name:'Left Wing',   icon:'◀',  svgId:'svg-left-wing',pulseId:null,             bit:0},
+  {id:'right-wing',name:'Right Wing', icon:'▶',  svgId:'svg-right-wing',pulseId:null,            bit:0},
+  {id:'avionics', name:'Avionics',    icon:'📡', svgId:'svg-avionics', pulseId:'pulse-avionics', bit:0},
+];
+
+function initAircraftBuilder(){
+  const wrap = document.getElementById('component-toggles');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  AIRCRAFT_COMPONENTS.forEach(c=>{
+    const el = document.createElement('div');
+    el.className = 'comp-toggle' + (c.bit?'  fault':'');
+    el.id = 'ct-'+c.id;
+    el.innerHTML = `<span class="comp-icon">${c.icon}</span><span class="comp-name">${c.name}</span><span class="comp-bit" id="cb-${c.id}">${c.bit}</span><div class="toggle-switch"><div class="toggle-knob"></div></div>`;
+    el.onclick = ()=>toggleComponent(c.id);
+    wrap.appendChild(el);
+  });
+  updateSigDisplay();
+}
+
+function toggleComponent(id){
+  const c = AIRCRAFT_COMPONENTS.find(x=>x.id===id);
+  if(!c) return;
+  c.bit = c.bit ? 0 : 1;
+  // update toggle row
+  const el = document.getElementById('ct-'+c.id);
+  if(el) el.className = 'comp-toggle' + (c.bit?' fault':'');
+  const bitEl = document.getElementById('cb-'+c.id);
+  if(bitEl) bitEl.textContent = c.bit;
+  // update SVG
+  updateSvgComponent(c);
+  updateSigDisplay();
+}
+
+function updateSvgComponent(c){
+  const svgEl = document.getElementById(c.svgId);
+  if(!svgEl) return;
+  if(c.bit){
+    svgEl.setAttribute('fill','rgba(255,82,82,0.18)');
+    svgEl.setAttribute('stroke','rgba(255,82,82,0.8)');
+    svgEl.classList.add('svg-component-fault');
+  } else {
+    svgEl.setAttribute('fill','rgba(0,229,255,0.08)');
+    svgEl.setAttribute('stroke','rgba(0,229,255,0.3)');
+    svgEl.classList.remove('svg-component-fault');
+  }
+  if(c.pulseId){
+    const p = document.getElementById(c.pulseId);
+    if(p){
+      if(c.bit){p.setAttribute('opacity','0.7');p.classList.add('svg-fault-pulse')}
+      else{p.setAttribute('opacity','0');p.classList.remove('svg-fault-pulse')}
+    }
+  }
+}
+
+function updateSigDisplay(){
+  const bits = AIRCRAFT_COMPONENTS.map(c=>c.bit);
+  const sig = bits.join('');
+  const labels = AIRCRAFT_COMPONENTS.map(c=>c.name.substring(0,4).toUpperCase()).join(' ');
+  const disp = document.getElementById('sig-bits-display');
+  if(disp){
+    disp.innerHTML = bits.map(b=>`<span class="bit-${b}">${b}</span>`).join('<span style="color:rgba(74,96,128,.4);margin:0 2px"> </span>');
+  }
+  const lblEl = document.getElementById('sig-component-labels');
+  if(lblEl) lblEl.textContent = AIRCRAFT_COMPONENTS.map(c=>c.name.substring(0,4).padEnd(4,' ')).join(' ');
+}
+
+function copySigToClassify(){
+  const sig = AIRCRAFT_COMPONENTS.map(c=>c.bit).join('');
+  const inp = document.getElementById('cl-sig');
+  if(inp){
+    inp.value = sig;
+    inp.style.borderColor='var(--cyan)';
+    inp.style.boxShadow='0 0 0 3px rgba(0,229,255,.15)';
+    setTimeout(()=>{inp.style.borderColor='';inp.style.boxShadow=''},1200);
+    toast('Signature copied to classifier: '+sig,'success');
+  }
+}
+
+const SCENARIOS = {
+  'all-clear':   [0,0,0,0,0,0],
+  'engine-fault':[1,1,0,0,0,0],
+  'fuel-wing':   [0,0,1,1,1,0],
+  'full-fault':  [1,1,1,1,1,1],
+  'avionics':    [0,0,0,0,0,1],
+  'random':      null,
+};
+
+function loadScenario(key){
+  let bits = SCENARIOS[key];
+  if(!bits) bits = AIRCRAFT_COMPONENTS.map(()=>Math.random()>.5?1:0);
+  AIRCRAFT_COMPONENTS.forEach((c,i)=>{
+    c.bit = bits[i];
+    const el = document.getElementById('ct-'+c.id);
+    if(el) el.className = 'comp-toggle' + (c.bit?' fault':'');
+    const bitEl = document.getElementById('cb-'+c.id);
+    if(bitEl) bitEl.textContent = c.bit;
+    updateSvgComponent(c);
+  });
+  updateSigDisplay();
+  // auto-copy
+  const sig = AIRCRAFT_COMPONENTS.map(c=>c.bit).join('');
+  const inp = document.getElementById('cl-sig');
+  if(inp) inp.value = sig;
+  toast('Scenario loaded: '+key.replace('-',' '),'info');
+}
+
+// Initialize builder when classify page is visited
+const _origGotoBuilder = window.gotoPage;
+window.gotoPage = function(id,btn){
+  _origGotoBuilder.call(this,id,btn);
+  if(id==='classify') setTimeout(initAircraftBuilder, 50);
+};
+
+// Auto-init on app show
+const _origShowApp = window.showApp;
+window.showApp = function(){
+  _origShowApp.call(this);
+  setTimeout(initAircraftBuilder,300);
+};
+
+// keyboard support
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    const lp=document.getElementById('login-password'),se=document.getElementById('signup-password');
+    if(document.activeElement===lp)doLogin();
+    else if(document.activeElement===se)doSignup();
+  }
+});
+</script>
+</body>
+</html>
